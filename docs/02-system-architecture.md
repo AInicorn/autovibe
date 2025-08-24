@@ -138,7 +138,7 @@ retention_policies:
   traffic_logs:
     default_retention: "14d"      # Industry standard: 2 weeks typical, 1-2 months safer
     high_volume_projects: "7d"    # Reduce for high-traffic projects
-    security_events: "90d"        # Security logs need longer retention
+    security_events: "30d"        # Security logs basic retention
     compression_after: "1d"       # Compress after 1 day
     
   worker_artifacts:
@@ -148,8 +148,8 @@ retention_policies:
     valuable_outputs: "manual"    # Require manual review before deletion
     
   financial_records:
-    retention: "7y"               # Legal/compliance requirement
-    archive_after: "1y"          # Move to cold storage after 1 year
+    retention: "90d"              # Basic financial tracking
+    archive_after: "30d"         # Move to cold storage after 30 days  
     backup_frequency: "daily"
     
   checkpoints:
@@ -170,7 +170,7 @@ d /mnt/data/autovibe/traffic-logs    0755 autovibe autovibe -
 d /mnt/data/autovibe/traffic-logs/project-0-autovibe 0755 autovibe autovibe -
 Z /mnt/data/autovibe/traffic-logs/project-0-autovibe - autovibe autovibe 14d  # Standard retention
 Z /mnt/data/autovibe/traffic-logs/project-2-crypto-profit - autovibe autovibe 7d   # High volume = shorter
-e /mnt/data/autovibe/traffic-logs/*security* - - - 90d  # Security events longer retention
+e /mnt/data/autovibe/traffic-logs/*security* - - - 30d  # Security events basic retention
 
 # Worker artifacts with differentiated cleanup
 Z /mnt/data/autovibe/worker-artifacts/*/code 0644 autovibe autovibe 30d
@@ -218,7 +218,7 @@ systemctl restart systemd-tmpfiles-clean
   vars:
     # Environment-specific retention periods
     retention_multiplier: "{{ '2' if env == 'production' else '0.5' }}"
-    security_retention: "{{ '180d' if compliance_required else '30d' }}"
+    security_retention: "30d"
     
 - name: Generate systemd-tmpfiles configuration  
   command: /usr/local/bin/autovibe-retention-manager
@@ -237,10 +237,10 @@ systemctl restart systemd-tmpfiles-clean
 ```
 
 **Research-based retention standards**:
-- **Security logs**: 90d-1y (compliance requirements)
+- **Security logs**: 30d (basic operational needs)
 - **Application logs**: 14d typical, 30-60d safer (industry standard)
 - **Debug/trace logs**: 3-7d (high volume, low retention value)
-- **Financial records**: 7y (legal requirements - SOX, PCI DSS)
+- **Financial records**: 90d (basic financial tracking)
 - **Build artifacts**: 7-30d (depending on CI/CD frequency)
 - **Backup retention**: 3-2-1 rule (3 copies, 2 media types, 1 offsite)
 
