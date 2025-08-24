@@ -82,23 +82,90 @@ Internet ↔ mitmproxy (orchestrator) ↔ Worker VMs
 
 ## Data Storage Structure
 
+Service-first organization with project subdirectories and date-based partitioning:
+
 ```
 /mnt/data/autovibe/
-├── projects/
-│   ├── project-1/
-│   │   ├── financial/             # Project-specific transaction logs
-│   │   ├── traffic-logs/          # Project-specific mitmproxy captures
-│   │   ├── worker-artifacts/      # Generated code, apps, outputs
-│   │   └── checkpoints/          # VM snapshots and evolution tree
-│   ├── project-2/
-│   │   └── ...
-├── hub/
-│   ├── elasticsearch/          # Centralized ES data directory
-│   ├── model-weights/         # Qwen2.5-Coder + DeepSeek-R1 weights
-│   ├── vault-secrets/         # Encrypted key storage
-│   ├── configs/              # Nomad jobs, retention policies
-│   └── postgres/             # Future PostgreSQL data
+├── postgres/                   # PostgreSQL data from docker compose
+│   └── data/                   # Standard postgres data directory
+├── traffic-logs/               # mitmproxy captures with date partitioning
+│   ├── project-0-autovibe/
+│   │   ├── 2025-01-01/        # Daily partitions for easy filtering
+│   │   ├── 2025-01-02/        # Before loading to Elasticsearch
+│   │   └── 2025-01-03/
+│   ├── project-2-crypto-profit/
+│   │   ├── 2025-01-01/
+│   │   └── 2025-01-02/
+│   └── project-4-cryptopulse/
+├── financial/                  # Transaction logs and beancount ledgers
+│   ├── project-0-autovibe/
+│   │   ├── transactions.json
+│   │   ├── ledger.beancount
+│   │   └── receipts/
+│   ├── project-2-crypto-profit/
+│   └── project-4-cryptopulse/
+├── worker-artifacts/           # Generated code, apps, outputs
+│   ├── project-0-autovibe/
+│   ├── project-2-crypto-profit/
+│   └── project-4-cryptopulse/
+├── checkpoints/                # VM snapshots and evolution tree
+│   ├── project-0-autovibe/
+│   │   ├── vm-snapshots/
+│   │   ├── file-manifests/
+│   │   └── metadata/
+│   ├── project-2-crypto-profit/
+│   └── project-4-cryptopulse/
+├── elasticsearch/              # ES data directory
+│   └── data/                   # Standard elasticsearch data
+├── model-weights/              # Shared AI model weights
+│   ├── qwen-coder/
+│   ├── deepseek-r1/
+│   └── yi-coder/
+├── vault-secrets/              # HashiCorp Vault encrypted storage
+└── configs/                    # Nomad jobs, retention policies
+    ├── nomad/
+    ├── retention-policies.yaml
+    └── logrotate.conf
 ```
+
+### Retention Policies & Log Management
+
+**Traffic Logs Retention (using logrotate + Elasticsearch ILM)**:
+```yaml
+# retention-policies.yaml
+traffic_logs:
+  raw_files:
+    retention: "30d"           # Keep raw files for 30 days
+    rotation: "daily"          # Daily rotation
+    compression: "gzip"        # Compress older files
+  elasticsearch:
+    hot_phase: "7d"            # Keep in hot nodes for 7 days
+    warm_phase: "30d"          # Move to warm nodes after 7d
+    cold_phase: "90d"          # Move to cold nodes after 30d
+    delete_phase: "365d"       # Delete after 1 year
+
+financial_logs:
+  retention: "7y"              # Legal requirement for financial records
+  backup_frequency: "daily"
+  archive_after: "1y"
+
+checkpoints:
+  retention: "unlimited"       # Keep all project evolution history
+  compression: "lz4"           # Fast compression for frequent access
+  cleanup_failed: "7d"         # Remove failed/corrupted checkpoints
+
+worker_artifacts:
+  retention: "90d"             # Keep outputs for 3 months
+  archive_valuable: "manual"   # Manual review for valuable outputs
+```
+
+**Implementation Stack**:
+- **logrotate**: Daily rotation of raw traffic logs
+- **Filebeat**: Ship logs to Elasticsearch with project/date filtering
+- **Elasticsearch ILM**: Automated lifecycle management (hot→warm→cold→delete)
+- **Curator**: Legacy index cleanup and maintenance
+- **systemd-tmpfiles**: Automatic cleanup of temporary files
+- **ZFS snapshots**: Point-in-time recovery for critical data
 
 ## Intelligent Machine Design
 
