@@ -89,32 +89,32 @@ Service-first organization with project subdirectories and date-based partitioni
 ├── postgres/                   # PostgreSQL data from docker compose
 │   └── data/                   # Standard postgres data directory
 ├── traffic-logs/               # mitmproxy captures with date partitioning
-│   ├── project-0-autovibe/
+│   ├── 123e4567-e89b-12d3-a456-426614174000/
 │   │   ├── 2025-01-01/        # Daily partitions for easy filtering
 │   │   ├── 2025-01-02/        # Before loading to Elasticsearch
 │   │   └── 2025-01-03/
-│   ├── project-2-crypto-profit/
+│   ├── 987fcdeb-51c2-43d1-a983-123456789abc/
 │   │   ├── 2025-01-01/
 │   │   └── 2025-01-02/
-│   └── project-4-cryptopulse/
+│   └── 456e7890-a12b-34c5-d678-901234567890/
 ├── financial/                  # Transaction logs and beancount ledgers
-│   ├── project-0-autovibe/
+│   ├── 123e4567-e89b-12d3-a456-426614174000/
 │   │   ├── transactions.json
 │   │   ├── ledger.beancount
 │   │   └── receipts/
-│   ├── project-2-crypto-profit/
-│   └── project-4-cryptopulse/
+│   ├── 987fcdeb-51c2-43d1-a983-123456789abc/
+│   └── 456e7890-a12b-34c5-d678-901234567890/
 ├── worker-artifacts/           # Generated code, apps, outputs
-│   ├── project-0-autovibe/
-│   ├── project-2-crypto-profit/
-│   └── project-4-cryptopulse/
+│   ├── 123e4567-e89b-12d3-a456-426614174000/
+│   ├── 987fcdeb-51c2-43d1-a983-123456789abc/
+│   └── 456e7890-a12b-34c5-d678-901234567890/
 ├── checkpoints/                # VM snapshots and evolution tree
-│   ├── project-0-autovibe/
+│   ├── 123e4567-e89b-12d3-a456-426614174000/
 │   │   ├── vm-snapshots/
 │   │   ├── file-manifests/
 │   │   └── metadata/
-│   ├── project-2-crypto-profit/
-│   └── project-4-cryptopulse/
+│   ├── 987fcdeb-51c2-43d1-a983-123456789abc/
+│   └── 456e7890-a12b-34c5-d678-901234567890/
 ├── elasticsearch/              # ES data directory
 │   └── data/                   # Standard elasticsearch data
 ├── model-weights/              # Shared AI model weights
@@ -165,11 +165,11 @@ retention_policies:
 # /etc/tmpfiles.d/autovibe.conf
 # Type Path                    Mode User Group Age      Argument
 
-# Traffic logs with configurable retention per project type
+# Traffic logs with configurable retention per UUID
 d /mnt/data/autovibe/traffic-logs    0755 autovibe autovibe -
-d /mnt/data/autovibe/traffic-logs/project-0-autovibe 0755 autovibe autovibe -
-Z /mnt/data/autovibe/traffic-logs/project-0-autovibe - autovibe autovibe 14d  # Standard retention
-Z /mnt/data/autovibe/traffic-logs/project-2-crypto-profit - autovibe autovibe 7d   # High volume = shorter
+d /mnt/data/autovibe/traffic-logs/123e4567-e89b-12d3-a456-426614174000 0755 autovibe autovibe -
+Z /mnt/data/autovibe/traffic-logs/123e4567-e89b-12d3-a456-426614174000 - autovibe autovibe 14d  # Standard retention
+Z /mnt/data/autovibe/traffic-logs/987fcdeb-51c2-43d1-a983-123456789abc - autovibe autovibe 7d   # High volume = shorter
 e /mnt/data/autovibe/traffic-logs/*security* - - - 30d  # Security events basic retention
 
 # Worker artifacts with differentiated cleanup
@@ -200,7 +200,7 @@ TMPFILES_DIR="/etc/tmpfiles.d"
 # Parse YAML and generate tmpfiles.d entries
 yq eval '.retention_policies.traffic_logs' "$CONFIG" | while IFS= read -r line; do
     # Generate appropriate systemd-tmpfiles rules based on config
-    echo "Z /mnt/data/autovibe/traffic-logs/$project - autovibe autovibe $retention"
+    echo "Z /mnt/data/autovibe/traffic-logs/$uuid - autovibe autovibe $retention"
 done > "$TMPFILES_DIR/autovibe-dynamic.conf"
 
 # Reload systemd-tmpfiles configuration
