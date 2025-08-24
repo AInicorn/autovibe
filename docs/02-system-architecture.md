@@ -92,7 +92,7 @@ Internet ↔ mitmproxy (orchestrator) ↔ Worker VMs
 │   │   └── checkpoints/          # VM snapshots and evolution tree
 │   ├── project-2/
 │   │   └── ...
-├── hub/          # Call hub for centralized services
+├── hub/
 │   ├── elasticsearch/          # Centralized ES data directory
 │   ├── model-weights/         # Qwen2.5-Coder + DeepSeek-R1 weights
 │   ├── vault-secrets/         # Encrypted key storage
