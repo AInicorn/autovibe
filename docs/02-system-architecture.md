@@ -128,44 +128,74 @@ Service-first organization with project subdirectories and date-based partitioni
     └── logrotate.conf
 ```
 
-### Retention Policies & Log Management
+### Filesystem Retention Management
 
-**Traffic Logs Retention (using logrotate + Elasticsearch ILM)**:
-```yaml
-# retention-policies.yaml
-traffic_logs:
-  raw_files:
-    retention: "30d"           # Keep raw files for 30 days
-    rotation: "daily"          # Daily rotation
-    compression: "gzip"        # Compress older files
-  elasticsearch:
-    hot_phase: "7d"            # Keep in hot nodes for 7 days
-    warm_phase: "30d"          # Move to warm nodes after 7d
-    cold_phase: "90d"          # Move to cold nodes after 30d
-    delete_phase: "365d"       # Delete after 1 year
+**Directory-based retention with automatic cleanup**:
 
-financial_logs:
-  retention: "7y"              # Legal requirement for financial records
-  backup_frequency: "daily"
-  archive_after: "1y"
-
-checkpoints:
-  retention: "unlimited"       # Keep all project evolution history
-  compression: "lz4"           # Fast compression for frequent access
-  cleanup_failed: "7d"         # Remove failed/corrupted checkpoints
-
-worker_artifacts:
-  retention: "90d"             # Keep outputs for 3 months
-  archive_valuable: "manual"   # Manual review for valuable outputs
+```bash
+# Filesystem retention using tmpreaper, find, and systemd timers
+/mnt/data/autovibe/
+├── traffic-logs/               # Auto-cleanup with tmpreaper
+│   ├── project-*/2025-*-*/     # tmpreaper removes dirs older than 30d
+├── financial/                  # Manual retention (7y legal requirement)
+├── worker-artifacts/           # find + cron cleanup (90d retention)
+├── checkpoints/                # Unlimited retention with LZ4 compression
 ```
 
-**Implementation Stack**:
-- **logrotate**: Daily rotation of raw traffic logs
-- **Filebeat**: Ship logs to Elasticsearch with project/date filtering
-- **Elasticsearch ILM**: Automated lifecycle management (hot→warm→cold→delete)
-- **Curator**: Legacy index cleanup and maintenance
-- **systemd-tmpfiles**: Automatic cleanup of temporary files
-- **ZFS snapshots**: Point-in-time recovery for critical data
+**Retention Implementation (filesystem level)**:
+
+1. **tmpreaper** - Efficient directory tree cleanup
+```bash
+# /etc/tmpreaper.conf  
+TMPREAPER_TIME=30d
+TMPREAPER_DIRS="/mnt/data/autovibe/traffic-logs"
+TMPREAPER_PROTECT_EXTRA='*.lock'
+```
+
+2. **logrotate** - File-based rotation
+```bash
+# /etc/logrotate.d/autovibe-traffic
+/mnt/data/autovibe/traffic-logs/*/2025-*-*/*.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    sharedscripts
+}
+```
+
+3. **systemd timer** - Custom cleanup service
+```ini
+# /etc/systemd/system/autovibe-cleanup.timer
+[Unit]
+Description=AutoVibe filesystem cleanup
+Requires=autovibe-cleanup.service
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+4. **find + xargs** - Bulk operations
+```bash
+# Remove worker artifacts older than 90 days
+find /mnt/data/autovibe/worker-artifacts -type f -mtime +90 -print0 | xargs -0 rm -f
+
+# Compress checkpoints older than 7 days
+find /mnt/data/autovibe/checkpoints -name "*.qcow2" -mtime +7 -exec lz4 {} \;
+```
+
+**Common filesystem retention tools**:
+- **tmpreaper**: Removes files/dirs by age (Debian/Ubuntu standard)
+- **tmpwatch**: RedHat/CentOS equivalent  
+- **bleachbit**: Cross-platform system cleaner
+- **ncdu**: Disk usage analyzer for manual cleanup
+- **duf**: Modern disk usage utility
 
 ## Intelligent Machine Design
 
