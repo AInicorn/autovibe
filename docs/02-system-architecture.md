@@ -130,72 +130,119 @@ Service-first organization with project subdirectories and date-based partitioni
 
 ### Filesystem Retention Management
 
-**Directory-based retention with automatic cleanup**:
+**Configurable retention policies with industry-standard tools**:
 
-```bash
-# Filesystem retention using tmpreaper, find, and systemd timers
-/mnt/data/autovibe/
-├── traffic-logs/               # Auto-cleanup with tmpreaper
-│   ├── project-*/2025-*-*/     # tmpreaper removes dirs older than 30d
-├── financial/                  # Manual retention (7y legal requirement)
-├── worker-artifacts/           # find + cron cleanup (90d retention)
-├── checkpoints/                # Unlimited retention with LZ4 compression
+```yaml
+# /etc/autovibe/retention-config.yaml
+retention_policies:
+  traffic_logs:
+    default_retention: "14d"      # Industry standard: 2 weeks typical, 1-2 months safer
+    high_volume_projects: "7d"    # Reduce for high-traffic projects
+    security_events: "90d"        # Security logs need longer retention
+    compression_after: "1d"       # Compress after 1 day
+    
+  worker_artifacts:
+    code_outputs: "30d"           # Generated code kept 1 month
+    build_artifacts: "7d"         # Build outputs cleaned weekly  
+    debug_logs: "3d"              # Debug info cleaned quickly
+    valuable_outputs: "manual"    # Require manual review before deletion
+    
+  financial_records:
+    retention: "7y"               # Legal/compliance requirement
+    archive_after: "1y"          # Move to cold storage after 1 year
+    backup_frequency: "daily"
+    
+  checkpoints:
+    active_projects: "unlimited"  # Keep all project evolution
+    failed_snapshots: "7d"       # Clean failed/corrupted quickly
+    compression: "lz4"            # Fast compression for frequent access
+    cleanup_orphaned: "24h"      # Remove orphaned metadata
 ```
 
-**Retention Implementation (filesystem level)**:
+**Modern systemd-tmpfiles approach** (preferred over legacy tmpreaper):
 
-1. **tmpreaper** - Efficient directory tree cleanup
-```bash
-# /etc/tmpreaper.conf  
-TMPREAPER_TIME=30d
-TMPREAPER_DIRS="/mnt/data/autovibe/traffic-logs"
-TMPREAPER_PROTECT_EXTRA='*.lock'
-```
-
-2. **logrotate** - File-based rotation
-```bash
-# /etc/logrotate.d/autovibe-traffic
-/mnt/data/autovibe/traffic-logs/*/2025-*-*/*.log {
-    daily
-    rotate 30
-    compress
-    delaycompress
-    missingok
-    notifempty
-    sharedscripts
-}
-```
-
-3. **systemd timer** - Custom cleanup service
 ```ini
-# /etc/systemd/system/autovibe-cleanup.timer
-[Unit]
-Description=AutoVibe filesystem cleanup
-Requires=autovibe-cleanup.service
+# /etc/tmpfiles.d/autovibe.conf
+# Type Path                    Mode User Group Age      Argument
 
-[Timer]
-OnCalendar=daily
-Persistent=true
+# Traffic logs with configurable retention per project type
+d /mnt/data/autovibe/traffic-logs    0755 autovibe autovibe -
+d /mnt/data/autovibe/traffic-logs/project-0-autovibe 0755 autovibe autovibe -
+Z /mnt/data/autovibe/traffic-logs/project-0-autovibe - autovibe autovibe 14d  # Standard retention
+Z /mnt/data/autovibe/traffic-logs/project-2-crypto-profit - autovibe autovibe 7d   # High volume = shorter
+e /mnt/data/autovibe/traffic-logs/*security* - - - 90d  # Security events longer retention
 
-[Install]
-WantedBy=timers.target
+# Worker artifacts with differentiated cleanup
+Z /mnt/data/autovibe/worker-artifacts/*/code 0644 autovibe autovibe 30d
+Z /mnt/data/autovibe/worker-artifacts/*/builds 0644 autovibe autovibe 7d  
+Z /mnt/data/autovibe/worker-artifacts/*/debug 0644 autovibe autovibe 3d
+x /mnt/data/autovibe/worker-artifacts/*/valuable*  # Exclude valuable outputs
+
+# Checkpoints with selective cleanup  
+d /mnt/data/autovibe/checkpoints     0755 autovibe autovibe -
+Z /mnt/data/autovibe/checkpoints/*/failed 0644 autovibe autovibe 7d
+Z /mnt/data/autovibe/checkpoints/*/orphaned 0644 autovibe autovibe 1d
+
+# Temporary processing directories
+D /tmp/autovibe-processing 0755 autovibe autovibe 4h  # Clean processing temps quickly
 ```
 
-4. **find + xargs** - Bulk operations
+**Dynamic configuration management**:
+
 ```bash
-# Remove worker artifacts older than 90 days
-find /mnt/data/autovibe/worker-artifacts -type f -mtime +90 -print0 | xargs -0 rm -f
+# /usr/local/bin/autovibe-retention-manager
+#!/bin/bash
+# Reads YAML config and generates systemd-tmpfiles rules dynamically
 
-# Compress checkpoints older than 7 days
-find /mnt/data/autovibe/checkpoints -name "*.qcow2" -mtime +7 -exec lz4 {} \;
+CONFIG="/etc/autovibe/retention-config.yaml"
+TMPFILES_DIR="/etc/tmpfiles.d"
+
+# Parse YAML and generate tmpfiles.d entries
+yq eval '.retention_policies.traffic_logs' "$CONFIG" | while IFS= read -r line; do
+    # Generate appropriate systemd-tmpfiles rules based on config
+    echo "Z /mnt/data/autovibe/traffic-logs/$project - autovibe autovibe $retention"
+done > "$TMPFILES_DIR/autovibe-dynamic.conf"
+
+# Reload systemd-tmpfiles configuration
+systemctl restart systemd-tmpfiles-clean
 ```
 
-**Common filesystem retention tools**:
-- **tmpreaper**: Removes files/dirs by age (Debian/Ubuntu standard)
-- **tmpwatch**: RedHat/CentOS equivalent  
-- **bleachbit**: Cross-platform system cleaner
-- **ncdu**: Disk usage analyzer for manual cleanup
-- **duf**: Modern disk usage utility
+**Enterprise automation integration**:
+
+```yaml
+# Ansible playbook example for retention management
+- name: Configure AutoVibe retention policies
+  template:
+    src: retention-config.yaml.j2
+    dest: /etc/autovibe/retention-config.yaml
+  vars:
+    # Environment-specific retention periods
+    retention_multiplier: "{{ '2' if env == 'production' else '0.5' }}"
+    security_retention: "{{ '180d' if compliance_required else '30d' }}"
+    
+- name: Generate systemd-tmpfiles configuration  
+  command: /usr/local/bin/autovibe-retention-manager
+  notify: restart tmpfiles
+```
+
+**Monitoring and alerting**:
+
+```bash
+# Disk usage monitoring with configurable thresholds
+/usr/local/bin/autovibe-storage-monitor:
+- Warns at 80% disk usage
+- Triggers emergency cleanup at 90%  
+- Reports retention policy violations
+- Integrates with Prometheus/Grafana for dashboards
+```
+
+**Research-based retention standards**:
+- **Security logs**: 90d-1y (compliance requirements)
+- **Application logs**: 14d typical, 30-60d safer (industry standard)
+- **Debug/trace logs**: 3-7d (high volume, low retention value)
+- **Financial records**: 7y (legal requirements - SOX, PCI DSS)
+- **Build artifacts**: 7-30d (depending on CI/CD frequency)
+- **Backup retention**: 3-2-1 rule (3 copies, 2 media types, 1 offsite)
 
 ## Intelligent Machine Design
 
