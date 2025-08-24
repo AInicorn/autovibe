@@ -2,14 +2,14 @@
 
 ## Overview
 
-Economic-first autonomous coding system that runs unattended for hours/days with complete traffic logging, financial tracking, and swappable coding agents. Configurable number of worker VMs.
+Economic-first autonomous coding system that runs unattended for hours/days with complete traffic logging, financial tracking, and swappable intelligent machines. Configurable number of worker VMs.
 
 ## Core Principles
 
 - **Economic-first design**: Every token, transaction, and resource tracked
 - **Complete observability**: All traffic, inference, and spending logged
-- **Agent autonomy**: Budget-aware agents making spending decisions
-- **Maximum flexibility**: Swappable agents, payment methods, infrastructure
+- **Machine autonomy**: Budget-aware intelligent machines making spending decisions
+- **Maximum flexibility**: Swappable intelligent machines, payment methods, infrastructure
 
 ## Technology Stack
 
@@ -18,10 +18,10 @@ Economic-first autonomous coding system that runs unattended for hours/days with
 - **Ray Serve** - Load balancing across GPUs
 - **Nomad** - Worker orchestration across VMs
 - **HashiCorp Vault** - Secret management (cards, crypto keys, API tokens)
-- **FastAPI** - Agent communication and control interface
+- **FastAPI** - Intelligent machine communication and control interface
 
 ### Workers (VMs, configurable specs)
-- **Swappable coding agents**: Claude Code, Aider, Qwen Coder, Cursor CLI
+- **Swappable intelligent machines**: Claude Code, Aider, Qwen Coder, Cursor CLI
 - **SystemD services** - Process management
 - **Network proxy routing** - All traffic through orchestrator
 - **Budget-aware operation** - Daily spending limits via prompts
@@ -49,7 +49,7 @@ Economic-first autonomous coding system that runs unattended for hours/days with
 
 ### Budget Management
 - **Project-level budgets** (configurable per trial)
-- **Daily agent allowances** injected via prompts
+- **Daily machine allowances** injected via prompts
 - **Bi-weekly replenishment** tracking
 - **Multi-currency support** (configurable primary currency, crypto preferences)
 
@@ -62,7 +62,7 @@ Economic-first autonomous coding system that runs unattended for hours/days with
 ### Financial Tracking
 - **Token cost monitoring** per model/request
 - **Transaction logging** (successful + failed attempts)
-- **Revenue tracking** from agent-generated income
+- **Revenue tracking** from machine-generated income
 - **Real-time dashboards** with profit/loss analysis
 
 ## Network Architecture
@@ -92,7 +92,7 @@ Internet ↔ mitmproxy (orchestrator) ↔ Worker VMs
 │   │   └── checkpoints/          # VM snapshots and evolution tree
 │   ├── project-2/
 │   │   └── ...
-├── shared/
+├── shared/          # Call hub for centralized services
 │   ├── elasticsearch/          # Centralized ES data directory
 │   ├── model-weights/         # Qwen2.5-Coder + DeepSeek-R1 weights
 │   ├── vault-secrets/         # Encrypted key storage
@@ -100,7 +100,7 @@ Internet ↔ mitmproxy (orchestrator) ↔ Worker VMs
 │   └── postgres/             # Future PostgreSQL data
 ```
 
-## Agent Design
+## Intelligent Machine Design
 
 ### Core Capabilities
 - **Budget awareness** via prompt injection
@@ -109,18 +109,18 @@ Internet ↔ mitmproxy (orchestrator) ↔ Worker VMs
 - **Economic optimization** learning
 - **Confidence-based execution** (>0.7 threshold using DeepEval)
 
-### Swappable Agent Support
-- **Plugin architecture** for easy agent switching
+### Swappable Intelligent Machine Support
+- **Plugin architecture** for easy machine switching
 - **Standardized interfaces** for file operations, web access, payments
-- **Agent-agnostic logging** and monitoring
-- **Performance comparison** across different agents
+- **Machine-agnostic logging** and monitoring
+- **Performance comparison** across different intelligent machines
 
 ## Post-MVP Extensions
 
 ### Development Streaming
 - **Terminal session streaming** to platforms
 - **Desktop/browser recording** with real-time commentary
-- **Multi-agent dashboard** streams
+- **Multi-machine dashboard** streams
 - **Financial overlay** showing live spending/earnings
 
 ### Advanced Controls
@@ -147,16 +147,16 @@ Internet ↔ mitmproxy (orchestrator) ↔ Worker VMs
 - **Uptime**: >99% worker availability
 - **Throughput**: Successful task completion rate
 - **Cost efficiency**: CAD per successful task
-- **Response time**: Agent decision-making speed
+- **Response time**: Machine decision-making speed
 
 ### Economic
-- **ROI tracking**: Revenue vs spending per agent
+- **ROI tracking**: Revenue vs spending per machine
 - **Budget adherence**: Staying within daily/project limits
 - **Payment success rate**: Transaction completion
 - **Cost optimization**: Trend toward efficiency
 
 ### Quality
 - **Confidence scores**: SWE-bench style validation
-- **Agent comparison**: Performance across different tools
+- **Machine comparison**: Performance across different tools
 - **Error rates**: Failed vs successful executions
 - **Learning curves**: Improvement over time
