@@ -83,7 +83,7 @@ Internet ↔ mitmproxy (orchestrator) ↔ Worker VMs
 ## Data Storage Structure
 
 ```
-/mnt/data/autocode/
+/mnt/data/autovibe/
 ├── projects/
 │   ├── project-1/
 │   │   ├── financial/             # Project-specific transaction logs
