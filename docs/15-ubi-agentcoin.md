@@ -75,12 +75,17 @@ The primary verification method utilizes public-private key pairs issued by trus
 
 ## UBI Funding Mechanism
 
+### UBI Fee Structure
+The UBI system operates through a dedicated UBI fee applied to all network transactions and computational tasks:
+
+**UBI Transaction Fee**: Every transaction on the network includes a small UBI transaction fee that automatically contributes to the monthly UBI distribution pool, creating sustainable funding through network activity.
+
+**Computational Task UBI Fee**: AI inference, training, and other computational tasks include an additional UBI fee component beyond standard processing costs, ensuring compute-intensive operations contribute proportionally to UBI funding.
+
 ### Token Economics
-The UBI system operates through network transaction fees and computational task revenues that fund monthly distributions:
+**Automatic Collection**: UBI fees are collected automatically during transaction processing and pooled for monthly distribution, requiring no manual intervention or separate payment processes.
 
-**Network Transaction Tax**: Small percentage of all TON network transactions contributes to the UBI pool, creating sustainable funding through network growth.
-
-**Computational Task Revenue**: Fees from AI inference, training, and other computational tasks provide additional funding sources for UBI distribution.
+**Transparent Distribution**: All UBI fee collection and distribution occurs on-chain with full transparency, enabling participants to verify funding sources and allocation accuracy.
 
 ### Sustainability Model
 **Self-Sustaining Economy**: As network usage grows, transaction volume increases UBI pool funding, enabling larger monthly payments or expanded participant base.
