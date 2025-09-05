@@ -13,27 +13,17 @@ The Hub is itself an Intelligent Machine that manages other Intelligent Machines
 - **Permissions**: Can spawn/terminate other VMs via Proxmox API
 
 ### Internal Stack (Docker Compose)
-```yaml
-# Conceptual structure - not implementation
-services:
-  orchestrator:
-    # Main Python application
-    # Handles API requests, machine spawning, budget management
-    
-  postgres:
-    # Project data, checkpoints metadata, resource tracking
-    
-  redis:
-    # Session state, caching, job queues
-    
-  nginx:
-    # Reverse proxy, SSL termination, rate limiting
-```
+The Hub runs a multi-service architecture within its VM:
+
+- **Orchestrator Service**: Main Python application handling API requests, machine spawning, and budget management
+- **PostgreSQL Database**: Stores project data, checkpoint metadata, and resource tracking information
+- **Redis Cache**: Manages session state, caching, and job queues for performance
+- **Nginx Proxy**: Provides reverse proxy, SSL termination, and rate limiting capabilities
 
 ## Hub Checkpointing System
 
 ### Infrastructure-Level Checkpointing
-Unlike task machines that checkpoint application state, Hub checkpoints its **entire VM**:
+Unlike task machines that checkpoint application state (post-MVP), Hub checkpoints its **entire VM**:
 
 1. **Mark in Database**: Update checkpoint UUID in PostgreSQL
 2. **Trigger Snapshot**: Call Proxmox API to create ZFS/PBS snapshot of entire VM
@@ -45,27 +35,12 @@ Unlike task machines that checkpoint application state, Hub checkpoints its **en
 - **Before Major Operations**: Manual checkpoint before spawning experimental Hubs
 - **Emergency**: On-demand checkpoints before risky system changes
 
-### Technical Implementation
-```python
-# Conceptual flow
-def create_hub_checkpoint():
-    checkpoint_uuid = generate_uuid()
-    
-    # 1. Mark in database first
-    db.execute("""
-        INSERT INTO hub_checkpoints (uuid, vm_id, status, created_at)
-        VALUES (%s, %s, 'creating', NOW())
-    """, checkpoint_uuid, hub_vm_id)
-    
-    # 2. Trigger Proxmox snapshot
-    proxmox_api.create_vm_snapshot(hub_vm_id, checkpoint_uuid)
-    
-    # 3. Update status on completion
-    db.execute("""
-        UPDATE hub_checkpoints SET status = 'completed'
-        WHERE uuid = %s
-    """, checkpoint_uuid)
-```
+### Technical Implementation Process
+Hub checkpointing follows a three-step process using ORM operations:
+
+1. **Database Marking**: Generate unique checkpoint UUID and create database record with "creating" status
+2. **Snapshot Trigger**: Call Proxmox API to create ZFS/PBS snapshot of the entire Hub VM using the checkpoint UUID
+3. **Status Update**: Update database record to "completed" status once snapshot creation is verified
 
 ## Multi-Hub Evolution System
 
@@ -114,21 +89,12 @@ Hubs can detect and recover from failures:
 4. **Alert Generation**: Notify administrators of recovery events
 
 ### Recovery Decision Logic
-```python
-def hub_recovery_strategy():
-    if critical_failure_detected():
-        # Try last 3 checkpoints progressively
-        for checkpoint in get_recent_checkpoints(limit=3):
-            if attempt_rollback(checkpoint):
-                log_recovery_event("success", checkpoint.uuid)
-                return
-        
-        # If recent checkpoints fail, try 1-week old
-        stable_checkpoint = get_checkpoint_from_days_ago(7)
-        if attempt_rollback(stable_checkpoint):
-            log_recovery_event("deep_rollback", stable_checkpoint.uuid)
-            alert_administrators("Hub recovered from week-old checkpoint")
-```
+Hub recovery follows a progressive fallback strategy:
+
+1. **Recent Checkpoint Recovery**: When critical failure is detected, attempt rollback to the last 3 checkpoints sequentially
+2. **Progressive Fallback**: If recent checkpoints fail, attempt rollback to stable checkpoint from 1 week ago
+3. **Deep Recovery**: For severe failures, fall back to older stable checkpoints with administrator notification
+4. **Recovery Logging**: All recovery events are logged with success/failure status and checkpoint UUIDs for debugging
 
 ## Proxmox Integration
 

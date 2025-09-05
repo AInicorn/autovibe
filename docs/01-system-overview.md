@@ -26,11 +26,7 @@ autovibe operates on a **checkpoint-driven evolution model**:
 4. **Machine terminates** creating final checkpoint
 5. **New checkpoint** becomes basis for next evolution
 
-```
-Checkpoint A + "Add authentication" → Machine → Checkpoint B
-                                                      ↓
-Checkpoint B + "Add testing" → Machine → Checkpoint C
-```
+The evolution process follows a sequential pattern: Starting with Checkpoint A and a goal to "Add authentication", an Intelligent Machine is spawned, performs the work, and creates Checkpoint B. Then Checkpoint B becomes the foundation for the next evolution cycle where another goal like "Add testing" spawns a new Machine that creates Checkpoint C, and so forth.
 
 ## Hub as Intelligent Machine
 

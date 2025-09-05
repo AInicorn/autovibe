@@ -68,11 +68,7 @@ Economic-first autonomous coding system that runs unattended for hours/days with
 ## Network Architecture
 
 ### Traffic Flow
-```
-Internet ↔ mitmproxy (orchestrator) ↔ Worker VMs
-              ↓
-         Elasticsearch Logging
-```
+All internet traffic flows through the mitmproxy service running on the orchestrator, which intercepts and logs all communications to/from the Worker VMs. This intercepted traffic data is then forwarded to Elasticsearch for storage and analysis.
 
 ### Security & Monitoring
 - **Complete traffic interception** (HTTP/HTTPS)
@@ -84,157 +80,49 @@ Internet ↔ mitmproxy (orchestrator) ↔ Worker VMs
 
 Service-first organization with project subdirectories and date-based partitioning:
 
-```
-/mnt/data/autovibe/
-├── postgres/                   # PostgreSQL data from docker compose
-│   └── data/                   # Standard postgres data directory
-├── traffic-logs/               # mitmproxy captures with date partitioning
-│   ├── 123e4567-e89b-12d3-a456-426614174000/
-│   │   ├── 2025-01-01/        # Daily partitions for easy filtering
-│   │   ├── 2025-01-02/        # Before loading to Elasticsearch
-│   │   └── 2025-01-03/
-│   ├── 987fcdeb-51c2-43d1-a983-123456789abc/
-│   │   ├── 2025-01-01/
-│   │   └── 2025-01-02/
-│   └── 456e7890-a12b-34c5-d678-901234567890/
-├── financial/                  # Transaction logs and beancount ledgers
-│   ├── 123e4567-e89b-12d3-a456-426614174000/
-│   │   ├── transactions.json
-│   │   ├── ledger.beancount
-│   │   └── receipts/
-│   ├── 987fcdeb-51c2-43d1-a983-123456789abc/
-│   └── 456e7890-a12b-34c5-d678-901234567890/
-├── worker-artifacts/           # Generated code, apps, outputs
-│   ├── 123e4567-e89b-12d3-a456-426614174000/
-│   ├── 987fcdeb-51c2-43d1-a983-123456789abc/
-│   └── 456e7890-a12b-34c5-d678-901234567890/
-├── checkpoints/                # VM snapshots and evolution tree
-│   ├── 123e4567-e89b-12d3-a456-426614174000/
-│   │   ├── vm-snapshots/
-│   │   ├── file-manifests/
-│   │   └── metadata/
-│   ├── 987fcdeb-51c2-43d1-a983-123456789abc/
-│   └── 456e7890-a12b-34c5-d678-901234567890/
-├── elasticsearch/              # ES data directory
-│   └── data/                   # Standard elasticsearch data
-├── model-weights/              # Shared AI model weights
-│   ├── qwen-coder/
-│   ├── deepseek-r1/
-│   └── yi-coder/
-├── vault-secrets/              # HashiCorp Vault encrypted storage
-└── configs/                    # Nomad jobs, retention policies
-    ├── nomad/
-    ├── retention-policies.yaml
-    └── logrotate.conf
-```
+The data storage follows a service-first organization pattern with project subdirectories and date-based partitioning. The main data directory contains:
+
+- **postgres/**: PostgreSQL database files from the docker compose stack
+- **traffic-logs/**: mitmproxy traffic captures organized by project UUID and daily partitions for efficient filtering before Elasticsearch ingestion
+- **financial/**: Transaction logs, beancount ledger files, and receipt storage organized by project
+- **worker-artifacts/**: Generated code, applications, and other outputs from intelligent machines
+- **checkpoints/**: VM snapshots, file manifests, and metadata for the evolution tracking system
+- **elasticsearch/**: Standard Elasticsearch data directory for log storage
+- **model-weights/**: Shared storage for AI model weights (Qwen-Coder, DeepSeek-R1, Yi-Coder)
+- **vault-secrets/**: HashiCorp Vault encrypted storage for sensitive data
+- **configs/**: Configuration files for Nomad jobs, retention policies, and log rotation
 
 ### Filesystem Retention Management
 
 **Configurable retention policies with industry-standard tools**:
 
-```yaml
-# /etc/autovibe/retention-config.yaml
-retention_policies:
-  traffic_logs:
-    default_retention: "14d"      # Industry standard: 2 weeks typical, 1-2 months safer
-    high_volume_projects: "7d"    # Reduce for high-traffic projects
-    security_events: "30d"        # Security logs basic retention
-    compression_after: "1d"       # Compress after 1 day
-    
-  worker_artifacts:
-    code_outputs: "30d"           # Generated code kept 1 month
-    build_artifacts: "7d"         # Build outputs cleaned weekly  
-    debug_logs: "3d"              # Debug info cleaned quickly
-    valuable_outputs: "manual"    # Require manual review before deletion
-    
-  financial_records:
-    retention: "90d"              # Basic financial tracking
-    archive_after: "30d"         # Move to cold storage after 30 days  
-    backup_frequency: "daily"
-    
-  checkpoints:
-    active_projects: "unlimited"  # Keep all project evolution
-    failed_snapshots: "7d"       # Clean failed/corrupted quickly
-    compression: "lz4"            # Fast compression for frequent access
-    cleanup_orphaned: "24h"      # Remove orphaned metadata
-```
+The retention configuration system uses a YAML-based policy file that defines different retention periods for various data types:
+
+- **Traffic logs**: 14-day default retention (industry standard), reduced to 7 days for high-volume projects, 30 days for security events, with compression after 1 day
+- **Worker artifacts**: Generated code retained for 30 days, build artifacts cleaned weekly, debug logs cleaned after 3 days, valuable outputs require manual review before deletion
+- **Financial records**: 90-day retention for basic tracking, archived to cold storage after 30 days with daily backup frequency
+- **Checkpoints**: Unlimited retention for active projects, failed snapshots cleaned after 7 days, LZ4 compression for frequent access, orphaned metadata cleanup within 24 hours
 
 **Modern systemd-tmpfiles approach** (preferred over legacy tmpreaper):
 
-```ini
-# /etc/tmpfiles.d/autovibe.conf
-# Type Path                    Mode User Group Age      Argument
+The system uses modern systemd-tmpfiles configuration (preferred over legacy tmpreaper) to implement automated cleanup with differentiated retention periods:
 
-# Traffic logs with configurable retention per UUID
-d /mnt/data/autovibe/traffic-logs    0755 autovibe autovibe -
-d /mnt/data/autovibe/traffic-logs/123e4567-e89b-12d3-a456-426614174000 0755 autovibe autovibe -
-Z /mnt/data/autovibe/traffic-logs/123e4567-e89b-12d3-a456-426614174000 - autovibe autovibe 14d  # Standard retention
-Z /mnt/data/autovibe/traffic-logs/987fcdeb-51c2-43d1-a983-123456789abc - autovibe autovibe 7d   # High volume = shorter
-e /mnt/data/autovibe/traffic-logs/*security* - - - 30d  # Security events basic retention
-
-# Worker artifacts with differentiated cleanup
-Z /mnt/data/autovibe/worker-artifacts/*/code 0644 autovibe autovibe 30d
-Z /mnt/data/autovibe/worker-artifacts/*/builds 0644 autovibe autovibe 7d  
-Z /mnt/data/autovibe/worker-artifacts/*/debug 0644 autovibe autovibe 3d
-x /mnt/data/autovibe/worker-artifacts/*/valuable*  # Exclude valuable outputs
-
-# Checkpoints with selective cleanup  
-d /mnt/data/autovibe/checkpoints     0755 autovibe autovibe -
-Z /mnt/data/autovibe/checkpoints/*/failed 0644 autovibe autovibe 7d
-Z /mnt/data/autovibe/checkpoints/*/orphaned 0644 autovibe autovibe 1d
-
-# Temporary processing directories
-D /tmp/autovibe-processing 0755 autovibe autovibe 4h  # Clean processing temps quickly
-```
+- **Traffic logs**: Directory creation with configurable retention per UUID (14d standard, 7d for high volume projects, 30d for security events)
+- **Worker artifacts**: Differentiated cleanup policies - code files retained 30 days, build artifacts 7 days, debug files 3 days, with exclusions for valuable outputs
+- **Checkpoints**: Selective cleanup for failed checkpoints (7 days) and orphaned metadata (1 day), while preserving active project data
+- **Temporary processing**: Fast cleanup of temporary processing directories (4 hours) to prevent disk space accumulation
 
 **Dynamic configuration management**:
 
-```bash
-# /usr/local/bin/autovibe-retention-manager
-#!/bin/bash
-# Reads YAML config and generates systemd-tmpfiles rules dynamically
-
-CONFIG="/etc/autovibe/retention-config.yaml"
-TMPFILES_DIR="/etc/tmpfiles.d"
-
-# Parse YAML and generate tmpfiles.d entries
-yq eval '.retention_policies.traffic_logs' "$CONFIG" | while IFS= read -r line; do
-    # Generate appropriate systemd-tmpfiles rules based on config
-    echo "Z /mnt/data/autovibe/traffic-logs/$uuid - autovibe autovibe $retention"
-done > "$TMPFILES_DIR/autovibe-dynamic.conf"
-
-# Reload systemd-tmpfiles configuration
-systemctl restart systemd-tmpfiles-clean
-```
+The dynamic configuration management system includes a bash script that reads the YAML configuration file and generates systemd-tmpfiles rules automatically. The script parses retention policies for traffic logs and other data types, generates appropriate cleanup rules with the correct paths and retention periods, then reloads the systemd-tmpfiles configuration to apply changes.
 
 **Enterprise automation integration**:
 
-```yaml
-# Ansible playbook example for retention management
-- name: Configure AutoVibe retention policies
-  template:
-    src: retention-config.yaml.j2
-    dest: /etc/autovibe/retention-config.yaml
-  vars:
-    # Environment-specific retention periods
-    retention_multiplier: "{{ '2' if env == 'production' else '0.5' }}"
-    security_retention: "30d"
-    
-- name: Generate systemd-tmpfiles configuration  
-  command: /usr/local/bin/autovibe-retention-manager
-  notify: restart tmpfiles
-```
+Enterprise automation integration uses Ansible playbooks for retention management. The playbooks deploy templated retention configuration files with environment-specific variables (production environments use 2x retention multipliers, development uses 0.5x), set security log retention to 30 days, and automatically generate systemd-tmpfiles configuration through the retention manager script.
 
 **Monitoring and alerting**:
 
-```bash
-# Disk usage monitoring with configurable thresholds
-/usr/local/bin/autovibe-storage-monitor:
-- Warns at 80% disk usage
-- Triggers emergency cleanup at 90%  
-- Reports retention policy violations
-- Integrates with Prometheus/Grafana for dashboards
-```
+The monitoring and alerting system includes a disk usage monitoring script with configurable thresholds that warns at 80% disk usage, triggers emergency cleanup procedures at 90% capacity, reports retention policy violations, and integrates with Prometheus/Grafana for real-time dashboard visualization and alerting.
 
 **Research-based retention standards**:
 - **Security logs**: 30d (basic operational needs)

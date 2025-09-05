@@ -16,27 +16,13 @@ autovibe uses **fine-grained checkpointing** throughout machine operation, not j
 - **Resource Thresholds**: Every N API calls or M minutes of runtime
 - **User-Triggered**: Manual checkpoint requests via API
 
-#### Application-Level Checkpointing
-```python
-# Conceptual checkpoint creation for task machines
-def create_task_checkpoint(machine_id, context="automatic"):
-    checkpoint_data = {
-        "machine_id": machine_id,
-        "file_system": capture_filesystem_state(),
-        "conversation_history": get_recent_messages(),
-        "working_memory": extract_machine_context(),
-        "resource_usage": get_current_usage_stats(),
-        "context": context
-    }
-    
-    # 1. Create VM snapshot via Proxmox
-    snapshot_id = proxmox.create_vm_snapshot(machine_id)
-    
-    # 2. Store metadata in database
-    checkpoint_uuid = db.create_checkpoint(checkpoint_data, snapshot_id)
-    
-    return checkpoint_uuid
-```
+#### Application-Level Checkpointing (Post-MVP)
+Task machine checkpointing captures comprehensive state information:
+
+1. **State Collection**: Gather machine ID, filesystem state, conversation history, working memory context, and resource usage statistics
+2. **VM Snapshot Creation**: Trigger Proxmox API to create VM snapshot of the entire machine state
+3. **Metadata Storage**: Store checkpoint data and snapshot reference in database using ORM operations
+4. **UUID Return**: Provide unique checkpoint identifier for future reference and recovery operations
 
 ### Hub Machines
 
@@ -48,32 +34,12 @@ def create_task_checkpoint(machine_id, context="automatic"):
 - **Recovery Points**: After successful completion of complex operations
 
 #### Infrastructure-Level Checkpointing
-```python
-# Hub checkpointing at VM level
-def create_hub_checkpoint():
-    checkpoint_uuid = generate_uuid()
-    
-    # Mark creation in database
-    hub_checkpoint = {
-        "uuid": checkpoint_uuid,
-        "hub_vm_id": current_hub_vm_id,
-        "type": "infrastructure",
-        "trigger": determine_checkpoint_trigger(),
-        "status": "creating"
-    }
-    
-    db.create_hub_checkpoint(hub_checkpoint)
-    
-    # Trigger Proxmox VM snapshot
-    proxmox_result = proxmox_api.snapshot_vm(
-        vm_id=current_hub_vm_id,
-        snapshot_name=checkpoint_uuid,
-        description=f"Hub checkpoint {checkpoint_uuid}"
-    )
-    
-    # Update status on completion
-    db.update_checkpoint_status(checkpoint_uuid, "completed")
-```
+Hub checkpointing process operates at the infrastructure level:
+
+1. **UUID Generation**: Create unique checkpoint identifier for tracking
+2. **Database Marking**: Record checkpoint creation with Hub VM ID, type "infrastructure", trigger context, and "creating" status
+3. **Proxmox Snapshot**: Call Proxmox API to create named VM snapshot with checkpoint UUID and descriptive metadata
+4. **Status Update**: Mark checkpoint as "completed" in database once Proxmox confirms snapshot creation
 
 ## Checkpoint Storage and Management
 
@@ -83,32 +49,12 @@ def create_hub_checkpoint():
 - **File Manifests**: Detailed file listings and checksums
 - **Incremental Storage**: ZFS deduplication for efficient storage
 
-### Database Schema (Conceptual)
-```sql
--- Checkpoint metadata
-CREATE TABLE checkpoints (
-    uuid UUID PRIMARY KEY,
-    machine_uuid UUID REFERENCES intelligent_machines(uuid),
-    parent_checkpoint_uuid UUID REFERENCES checkpoints(uuid),
-    checkpoint_type VARCHAR(50), -- 'task', 'hub', 'emergency'
-    proxmox_snapshot_id VARCHAR(100),
-    file_manifest JSONB,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    status VARCHAR(20) DEFAULT 'completed',
-    size_bytes BIGINT,
-    metadata JSONB
-);
+### Database Schema Design
+Checkpoint metadata is stored using ORM models with the following key entities:
 
--- Hub-specific checkpoints
-CREATE TABLE hub_checkpoints (
-    uuid UUID PRIMARY KEY,
-    hub_vm_id VARCHAR(50),
-    trigger_reason VARCHAR(100), -- 'daily', 'manual', 'pre_evolution'
-    system_metrics JSONB,
-    active_machines INTEGER,
-    checkpoint_size_gb DECIMAL(10,2)
-);
-```
+**Main Checkpoints Table**: Contains UUID primary keys, machine references, parent checkpoint relationships, checkpoint types (task/hub/emergency), Proxmox snapshot references, file manifests as JSON, creation timestamps, status tracking, size information, and flexible metadata storage.
+
+**Hub Checkpoints Table**: Specialized for Hub-level checkpoints with Hub VM identifiers, trigger reasons (daily/manual/pre-evolution), system metrics as JSON, active machine counts, and checkpoint size tracking in GB.
 
 ### Checkpoint Retention Policies
 
@@ -127,55 +73,10 @@ CREATE TABLE hub_checkpoints (
 ## Checkpoint Recovery and Branching
 
 ### Task Machine Recovery
-```python
-def restore_task_machine(checkpoint_uuid):
-    checkpoint = db.get_checkpoint(checkpoint_uuid)
-    
-    # 1. Create new VM from checkpoint
-    new_vm_id = proxmox.restore_vm_from_snapshot(
-        snapshot_id=checkpoint.proxmox_snapshot_id,
-        vm_name=f"restored-{checkpoint_uuid[:8]}"
-    )
-    
-    # 2. Update machine registry
-    machine = create_machine_record(
-        vm_id=new_vm_id,
-        parent_checkpoint=checkpoint_uuid,
-        status="restored"
-    )
-    
-    # 3. Resume or branch operation
-    return machine
-```
+Task machine recovery involves a three-step process: First, retrieve checkpoint metadata using ORM operations, then create a new VM by restoring from the Proxmox snapshot with a generated name based on the checkpoint UUID. Second, update the machine registry with the new VM ID, parent checkpoint reference, and restored status. Finally, return the machine record for resuming or branching operations.
 
 ### Hub Recovery Process
-```python
-def recover_hub_from_checkpoint(checkpoint_uuid, recovery_reason="manual"):
-    hub_checkpoint = db.get_hub_checkpoint(checkpoint_uuid)
-    
-    # 1. Create recovery log entry
-    recovery_log = {
-        "from_checkpoint": checkpoint_uuid,
-        "reason": recovery_reason,
-        "initiated_at": datetime.utcnow(),
-        "status": "in_progress"
-    }
-    db.log_hub_recovery(recovery_log)
-    
-    # 2. Restore Hub VM from snapshot
-    restored_vm_id = proxmox.restore_hub_vm(hub_checkpoint.proxmox_snapshot_id)
-    
-    # 3. Update DNS/load balancing to point to restored Hub
-    update_hub_routing(restored_vm_id)
-    
-    # 4. Verify system health
-    if verify_hub_health(restored_vm_id):
-        db.update_recovery_status(recovery_log.id, "completed")
-        alert_administrators(f"Hub recovered successfully from {checkpoint_uuid}")
-    else:
-        db.update_recovery_status(recovery_log.id, "failed")
-        # Try older checkpoint or alert for manual intervention
-```
+Hub recovery follows a four-step process: First, retrieve hub checkpoint data and create a recovery log entry with the source checkpoint UUID, recovery reason, timestamp, and in-progress status. Second, restore the Hub VM from the Proxmox snapshot using the stored snapshot ID. Third, update DNS and load balancing configuration to route traffic to the restored Hub instance. Finally, verify system health and update recovery status to either completed (with administrator notification) or failed (triggering fallback to older checkpoints or manual intervention).
 
 ## Multi-Hub Evolutionary Checkpointing
 
@@ -189,28 +90,7 @@ When spawning experimental Hubs:
 5. **Track Performance**: Monitor both original and experimental Hubs
 
 ### Evolutionary Selection Process
-```python
-def hub_evolutionary_selection(experiment_duration_days=14):
-    active_experiments = db.get_active_hub_experiments()
-    
-    for experiment in active_experiments:
-        if experiment.runtime_days >= experiment_duration_days:
-            # Compare performance metrics
-            original_metrics = get_hub_performance(experiment.original_hub_id)
-            experimental_metrics = get_hub_performance(experiment.experimental_hub_id)
-            
-            # Selection criteria: efficiency, budget utilization, success rate
-            if experimental_metrics.overall_score > original_metrics.overall_score:
-                # Experimental Hub wins - promote it
-                promote_experimental_hub(experiment.experimental_hub_id)
-                retire_hub(experiment.original_hub_id)
-                
-                db.record_evolutionary_success(experiment.id)
-            else:
-                # Original Hub wins - terminate experiment
-                retire_hub(experiment.experimental_hub_id)
-                db.record_evolutionary_failure(experiment.id)
-```
+The evolutionary selection process operates with a configurable experiment duration (default 14 days). The system retrieves all active Hub experiments and evaluates those that have run for the full duration. Performance metrics are collected from both original and experimental Hubs, comparing efficiency, budget utilization, and success rates. If the experimental Hub shows superior overall performance, it gets promoted while the original Hub is retired and the evolutionary success is recorded. Otherwise, the experimental Hub is terminated, the original continues operation, and the evolutionary failure is logged.
 
 ## Emergency Recovery Procedures
 
@@ -224,25 +104,7 @@ If Hub fails completely:
 5. **Manual Intervention**: Alert administrators if all automatic recovery fails
 
 ### Data Integrity Verification
-```python
-def verify_checkpoint_integrity(checkpoint_uuid):
-    checkpoint = db.get_checkpoint(checkpoint_uuid)
-    
-    # 1. Verify database consistency
-    if not db.verify_checkpoint_metadata(checkpoint_uuid):
-        return False, "Database metadata inconsistent"
-    
-    # 2. Verify Proxmox snapshot exists
-    if not proxmox.snapshot_exists(checkpoint.proxmox_snapshot_id):
-        return False, "Proxmox snapshot missing"
-    
-    # 3. Verify file manifest matches snapshot contents
-    if checkpoint.file_manifest:
-        if not verify_file_manifest(checkpoint):
-            return False, "File manifest verification failed"
-    
-    return True, "Checkpoint integrity verified"
-```
+Data integrity verification performs a three-step validation process: First, verify database metadata consistency for the checkpoint record. Second, confirm that the referenced Proxmox snapshot actually exists in storage. Third, if a file manifest is present, verify that the manifest matches the actual snapshot contents. The verification returns success status with appropriate error messages for any validation failures.
 
 ## Checkpoint Performance Optimization
 
@@ -253,21 +115,6 @@ def verify_checkpoint_integrity(checkpoint_uuid):
 - **Background Processing**: Checkpoint creation doesn't block machine operation
 
 ### Cleanup and Maintenance
-```python
-# Automated checkpoint maintenance
-def cleanup_expired_checkpoints():
-    # Apply retention policies
-    expired_checkpoints = db.get_expired_checkpoints()
-    
-    for checkpoint in expired_checkpoints:
-        # Remove Proxmox snapshot
-        proxmox.delete_snapshot(checkpoint.proxmox_snapshot_id)
-        
-        # Remove database metadata
-        db.delete_checkpoint(checkpoint.uuid)
-        
-        # Update storage usage statistics
-        update_storage_metrics()
-```
+Automated checkpoint maintenance applies retention policies by identifying expired checkpoints through ORM queries. For each expired checkpoint, the system removes the associated Proxmox snapshot, deletes the database metadata record, and updates storage usage statistics to maintain accurate capacity tracking.
 
 This comprehensive checkpointing system enables fine-grained recovery, experimental branching, and self-healing capabilities across all system components.

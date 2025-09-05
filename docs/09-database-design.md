@@ -7,30 +7,7 @@ autovibe uses PostgreSQL as its primary data store for metadata, resource tracki
 ## Core Tables
 
 ### Projects
-```sql
-CREATE TABLE projects (
-    uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL UNIQUE,
-    greediness DECIMAL(5,3) CHECK (greediness >= 0 AND greediness <= 1),
-    status VARCHAR(50) DEFAULT 'active',
-    description TEXT,
-    initial_checkpoint_uuid UUID,
-    current_checkpoint_uuid UUID,
-    metadata JSONB DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX idx_projects_greediness ON projects(greediness DESC);
-CREATE INDEX idx_projects_status ON projects(status);
-CREATE INDEX idx_projects_metadata ON projects USING GIN(metadata);
-
--- Trigger to update updated_at
-CREATE TRIGGER update_projects_updated_at
-    BEFORE UPDATE ON projects
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
-```
+The Projects table stores project metadata using UUID primary keys, with required name and greediness factor (0-1 decimal with validation). The table tracks project status (default 'active'), description, initial and current checkpoint references, flexible metadata in JSONB format, and timestamps. Indexes optimize queries on greediness (descending), status, and metadata (GIN index). An update trigger automatically maintains the updated_at timestamp.
 
 ### Intelligent Machines
 ```sql

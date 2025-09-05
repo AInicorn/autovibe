@@ -7,35 +7,7 @@ Proxmox serves as the foundational infrastructure layer for autovibe, providing 
 ## Proxmox API Integration
 
 ### Authentication and Permissions
-```python
-class ProxmoxClient:
-    def __init__(self, host, username, password, realm='pve'):
-        self.host = host
-        self.username = username
-        self.realm = realm
-        self.api_token = None
-        self.session = self._authenticate(password)
-    
-    def _authenticate(self, password):
-        """Authenticate with Proxmox and obtain API ticket"""
-        auth_data = {
-            'username': f"{self.username}@{self.realm}",
-            'password': password
-        }
-        
-        response = requests.post(
-            f"https://{self.host}:8006/api2/json/access/ticket",
-            data=auth_data,
-            verify=False  # SSL cert verification config
-        )
-        
-        if response.status_code == 200:
-            ticket_data = response.json()['data']
-            self.api_token = ticket_data['ticket']
-            return requests.Session()
-        else:
-            raise ProxmoxAuthenticationError("Failed to authenticate with Proxmox")
-```
+The ProxmoxClient class handles authentication and API communication with Proxmox servers. It initializes with host credentials, authenticates by sending username and password to the Proxmox API ticket endpoint, extracts the API token from successful responses, and establishes an authenticated session. Authentication failures raise ProxmoxAuthenticationError exceptions.
 
 ### Required Proxmox Permissions
 Hub VM user needs specific permissions:
@@ -50,241 +22,30 @@ Hub VM user needs specific permissions:
 ## VM Lifecycle Management
 
 ### VM Creation from Templates
-```python
-def create_vm_from_template(template_id, vm_config):
-    """Create new VM by cloning from template"""
-    
-    clone_params = {
-        'newid': get_next_available_vmid(),
-        'name': vm_config['name'],
-        'target': vm_config.get('target_node', 'proxmox-node-1'),
-        'full': 1,  # Full clone, not linked clone
-        'storage': vm_config.get('storage', 'local-lvm')
-    }
-    
-    # Clone VM from template
-    response = proxmox_api.post(
-        f"/nodes/{clone_params['target']}/qemu/{template_id}/clone",
-        data=clone_params
-    )
-    
-    new_vm_id = clone_params['newid']
-    
-    # Configure VM resources
-    vm_resources = {
-        'cores': vm_config['cpu_cores'],
-        'memory': vm_config['memory_mb'],
-        'net0': f"virtio,bridge=vmbr0,firewall=1",
-        'scsi0': f"{vm_config['storage']}:{vm_config['disk_gb']}"
-    }
-    
-    proxmox_api.put(
-        f"/nodes/{clone_params['target']}/qemu/{new_vm_id}/config",
-        data=vm_resources
-    )
-    
-    return new_vm_id
-```
+VM creation from templates involves a two-step process: First, clone a VM from the specified template using Proxmox API, generating a new VM ID and specifying target node, storage location, and full clone parameters. Second, configure the new VM's resources including CPU cores, memory allocation, network interface with virtio bridge and firewall, and storage disk configuration. The function returns the newly created VM ID.
 
 ### VM Template Management
-```python
-# VM Templates for different machine types
-VM_TEMPLATES = {
-    'claude_code': {
-        'template_id': 100,
-        'cpu_cores': 2,
-        'memory_mb': 4096,
-        'disk_gb': 20,
-        'network_config': 'api_access',
-        'installed_software': [
-            'ubuntu-22.04-base',
-            'docker',
-            'python3.11',
-            'nodejs',
-            'claude-api-client',
-            'git',
-            'autovibe-agent'
-        ]
-    },
-    
-    'hub': {
-        'template_id': 101,
-        'cpu_cores': 4,
-        'memory_mb': 8192,
-        'disk_gb': 50,
-        'network_config': 'management_access',
-        'installed_software': [
-            'ubuntu-22.04-server',
-            'docker',
-            'docker-compose',
-            'postgresql-client',
-            'nginx',
-            'proxmox-ve-client',
-            'autovibe-hub'
-        ]
-    }
-}
-```
+VM template configurations define resource specifications and software packages for different machine types:
+
+**Claude Code Template (ID 100)**: 2 CPU cores, 4GB memory, 20GB disk with API access network configuration. Includes Ubuntu 22.04 base, Docker, Python 3.11, Node.js, Claude API client, Git, and autovibe-agent.
+
+**Hub Template (ID 101)**: 4 CPU cores, 8GB memory, 50GB disk with management access network configuration. Includes Ubuntu 22.04 server, Docker with Docker Compose, PostgreSQL client, Nginx, Proxmox VE client, and autovibe-hub software.
 
 ## Snapshot and Checkpoint Integration
 
 ### Snapshot Creation
-```python
-def create_vm_snapshot(vm_id, snapshot_name, description=""):
-    """Create VM snapshot via Proxmox API"""
-    
-    snapshot_params = {
-        'snapname': snapshot_name,
-        'description': description,
-        'vmstate': 1,  # Include RAM state for full checkpoint
-        'include_ram': True
-    }
-    
-    # Initiate snapshot creation
-    response = proxmox_api.post(
-        f"/nodes/{get_vm_node(vm_id)}/qemu/{vm_id}/snapshot",
-        data=snapshot_params
-    )
-    
-    # Monitor snapshot creation progress
-    task_id = response.json()['data']
-    wait_for_task_completion(task_id)
-    
-    # Verify snapshot exists
-    snapshots = list_vm_snapshots(vm_id)
-    if snapshot_name in [s['name'] for s in snapshots]:
-        return {
-            'snapshot_id': snapshot_name,
-            'vm_id': vm_id,
-            'created_at': datetime.utcnow(),
-            'size_bytes': get_snapshot_size(vm_id, snapshot_name)
-        }
-    else:
-        raise SnapshotCreationError(f"Failed to create snapshot {snapshot_name}")
-```
+VM snapshot creation initiates a Proxmox API call with snapshot parameters including name, description, and VM state inclusion (with RAM for full checkpoints). The system monitors snapshot creation progress using the returned task ID, waits for completion, verifies the snapshot exists in the VM's snapshot list, and returns snapshot metadata including ID, VM ID, creation timestamp, and size. Failed snapshot creation raises a SnapshotCreationError.
 
 ### Snapshot Restoration
-```python
-def restore_vm_from_snapshot(vm_id, snapshot_name, new_vm_id=None):
-    """Restore VM from snapshot, optionally as new VM"""
-    
-    if new_vm_id:
-        # Create new VM from snapshot (branching)
-        clone_params = {
-            'newid': new_vm_id,
-            'name': f"restored-{vm_id}-{snapshot_name}",
-            'snapname': snapshot_name,
-            'target': get_vm_node(vm_id),
-            'full': 1
-        }
-        
-        response = proxmox_api.post(
-            f"/nodes/{get_vm_node(vm_id)}/qemu/{vm_id}/clone",
-            data=clone_params
-        )
-        
-        return new_vm_id
-    else:
-        # Restore existing VM to snapshot state
-        response = proxmox_api.post(
-            f"/nodes/{get_vm_node(vm_id)}/qemu/{vm_id}/snapshot/{snapshot_name}/rollback"
-        )
-        
-        task_id = response.json()['data']
-        wait_for_task_completion(task_id)
-        
-        return vm_id
-```
+VM snapshot restoration operates in two modes: If a new VM ID is provided, the system creates a new VM by cloning from the snapshot with parameters including target node and full clone settings (branching). If no new VM ID is provided, the system restores the existing VM to the snapshot state using Proxmox rollback API, monitors task completion, and returns the appropriate VM ID.
 
 ### Snapshot Management
-```python
-def cleanup_old_snapshots(retention_policy):
-    """Clean up snapshots based on retention policy"""
-    
-    all_vms = get_all_autovibe_vms()
-    
-    for vm_id in all_vms:
-        snapshots = list_vm_snapshots(vm_id)
-        
-        # Apply retention policy
-        for snapshot in snapshots:
-            should_delete = apply_retention_policy(snapshot, retention_policy)
-            
-            if should_delete:
-                delete_vm_snapshot(vm_id, snapshot['name'])
-                log_snapshot_deletion(vm_id, snapshot['name'], "retention_policy")
-
-def apply_retention_policy(snapshot, policy):
-    """Determine if snapshot should be deleted based on policy"""
-    age_days = (datetime.utcnow() - snapshot['created_at']).days
-    
-    # Keep recent snapshots
-    if age_days <= policy['keep_daily_days']:
-        return False
-    
-    # Keep weekly snapshots
-    if age_days <= policy['keep_weekly_days'] and snapshot['name'].endswith('-weekly'):
-        return False
-    
-    # Keep monthly snapshots  
-    if age_days <= policy['keep_monthly_days'] and snapshot['name'].endswith('-monthly'):
-        return False
-    
-    # Keep manually marked important snapshots
-    if snapshot.get('important', False):
-        return False
-    
-    return True
-```
+Snapshot cleanup applies retention policies by iterating through all autovibe VMs and their snapshots. The retention policy evaluation considers snapshot age and naming conventions: recent snapshots are kept based on daily retention days, weekly snapshots (ending with '-weekly') are kept for the weekly retention period, monthly snapshots (ending with '-monthly') are kept for the monthly retention period, and manually marked important snapshots are always preserved. Snapshots meeting deletion criteria are removed and logged.
 
 ## Resource Monitoring and Control
 
 ### VM Resource Monitoring
-```python
-def get_vm_resource_usage(vm_id):
-    """Get real-time VM resource usage"""
-    
-    response = proxmox_api.get(
-        f"/nodes/{get_vm_node(vm_id)}/qemu/{vm_id}/status/current"
-    )
-    
-    vm_status = response.json()['data']
-    
-    return {
-        'cpu_usage_percent': vm_status.get('cpu', 0) * 100,
-        'memory_usage_bytes': vm_status.get('mem', 0),
-        'memory_total_bytes': vm_status.get('maxmem', 0),
-        'disk_read_bytes': vm_status.get('diskread', 0),
-        'disk_write_bytes': vm_status.get('diskwrite', 0),
-        'network_in_bytes': vm_status.get('netin', 0),
-        'network_out_bytes': vm_status.get('netout', 0),
-        'uptime_seconds': vm_status.get('uptime', 0),
-        'status': vm_status.get('status', 'unknown')
-    }
-
-def monitor_resource_limits(vm_id, resource_limits):
-    """Monitor VM and enforce resource limits"""
-    
-    current_usage = get_vm_resource_usage(vm_id)
-    
-    violations = []
-    
-    # Check CPU limit
-    if current_usage['cpu_usage_percent'] > resource_limits.get('max_cpu_percent', 90):
-        violations.append('cpu_exceeded')
-    
-    # Check memory limit
-    memory_usage_percent = (current_usage['memory_usage_bytes'] / 
-                          current_usage['memory_total_bytes']) * 100
-    if memory_usage_percent > resource_limits.get('max_memory_percent', 90):
-        violations.append('memory_exceeded')
-    
-    # Check uptime limit
-    if current_usage['uptime_seconds'] > resource_limits.get('max_uptime_seconds', 86400):
-        violations.append('max_runtime_exceeded')
-    
-    return violations
-```
+VM resource monitoring retrieves real-time usage statistics via Proxmox API including CPU usage percentage, memory consumption, disk I/O statistics, network traffic, uptime, and VM status. Resource limit monitoring compares current usage against configured limits (default 90% for CPU and memory, 24 hours for maximum runtime) and returns a list of violations including CPU exceeded, memory exceeded, or maximum runtime exceeded.
 
 ### Resource Quota Enforcement
 ```python
