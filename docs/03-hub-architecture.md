@@ -15,7 +15,7 @@ The Hub is itself an Intelligent Machine that manages other Intelligent Machines
 ### Internal Stack (Docker Compose)
 The Hub runs a multi-service architecture within its VM:
 
-- **Orchestrator Service**: Main Python application handling API requests, machine spawning, and budget management
+- **Hub Service**: Main Python application handling API requests, machine spawning, and budget management
 - **PostgreSQL Database**: Stores project data, checkpoint metadata, and resource tracking information
 - **Redis Cache**: Manages session state, caching, and job queues for performance
 - **Nginx Proxy**: Provides reverse proxy, SSL termination, and rate limiting capabilities
