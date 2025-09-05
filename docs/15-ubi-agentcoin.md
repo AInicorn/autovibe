@@ -1,95 +1,91 @@
-# Universal Basic Income Integration - AgentCoin System
+# Universal Basic Income on TON Blockchain
 
 ## Abstract
 
-This document outlines the design for AgentCoin, a decentralized ecosystem that combines machine learning, blockchain technology, torrent-style data sharing, and Universal Basic Income (UBI) into a federated learning economy. The system creates economic incentives for distributed AI tasks while providing universal income distribution.
+This document outlines the design for implementing Universal Basic Income (UBI) on the TON (Telegram Open Network) blockchain. The system creates a global UBI distribution mechanism that bridges economic gaps between developed and developing countries through decentralized compute participation and human verification.
 
-## Novel Contributions
+## UBI Implementation on TON
 
-### Key Innovations
-- **Federated Learning with Crypto Incentives**: Decentralized ML training with token-based rewards
-- **UBI Redistribution**: Universal income through verified compute participation and human verification
-- **Decentralized Content Provenance**: Web scraping and data labeling with blockchain verification
-- **Storage Optimization**: Efficient large model distribution in decentralized networks
-- **Consensus-Based Validation**: Distributed verification for ML task authenticity
+### Core Innovation
+**Global UBI Distribution**: A blockchain-based universal income system that provides equal monthly payments to verified humans worldwide, with potential to bridge economic gaps between countries. For example, a 500 USD monthly UBI payment represents a modest bonus in Canada (covering ~20% of rent) while constituting an average monthly salary in India.
 
-## AgentCoin Platform Design
+### TON Blockchain Advantages
+- **High Scalability**: Block graph architecture with cells enables massive transaction throughput
+- **Native Features**: Built-in token staking, sharded execution, and integrated storage
+- **Telegram Integration**: Potential for seamless user onboarding through existing Telegram ecosystem
+- **Low Transaction Costs**: Efficient consensus mechanism reduces UBI distribution overhead
 
-### Core Architecture
-AgentCoin operates as a decentralized platform where agents (humans or AIs) perform ML-related tasks including training, inference, and data labeling. Participants receive cryptoeconomic rewards through three integrated systems:
-
-**Federated Learning Component**: Enables ML training across distributed nodes without centralized data collection, preserving privacy while enabling collaborative model improvement.
-
-**Blockchain Infrastructure**: Provides task validation, reputation scoring, payment processing, and UBI distribution through transparent, immutable transactions.
-
-**Torrent/IPFS-Style Sharing**: Facilitates decentralized model and data exchange, reducing bandwidth requirements and eliminating single points of failure.
-
-## Worker Classification System
-
-### Agent Types
-The network supports multiple worker categories, each with specific responsibilities and reward structures:
-
-**Trainers**: Participate in federated learning training rounds, contributing computational resources to model improvement while maintaining data privacy.
-
-**Inferencers**: Perform inference operations on request, providing AI model outputs for various applications and use cases.
-
-**Workers**: Execute diverse tasks including web scraping, data labeling, content verification, and quality assurance operations.
-
-### Trustless Validation
-Each task receives redundant assignment to multiple agents, ensuring trustless validation through consensus mechanisms similar to blockchain validator networks. This approach prevents single points of failure and maintains system integrity.
-
-## Universal Basic Income Integration
+## UBI Distribution Mechanism
 
 ### Economic Model
-The UBI system integrates directly into the network's economic structure, creating sustainable income distribution through task participation and compute contribution.
+The UBI system operates through a dual-contribution model that rewards both computational participation and human verification:
 
-### Distribution Mechanism
-UBI tax collection occurs automatically through network transactions, with funds distributed according to predefined allocation rules:
+**Compute Contribution Rewards**: Participants who provide computational resources for network tasks (inference, training, validation) earn proportional shares of the UBI pool.
 
-**Fifty Percent Allocation**: Distributed to all helpful nodes proportionally based on computational work contributed to the network.
+**Human Participation Requirements**: Verified humans earn UBI through minimal participation activities designed to be accessible across all device types and economic situations.
 
-**Fifty Percent Human Distribution**: Split equally among verified humans who demonstrate network participation through battery-friendly computations on devices including phones, computers, smart watches, and IoT devices.
+**Global Impact**: The system has potential to reduce global economic inequality by providing universal access to basic income regardless of geographic location or economic development level.
 
-### Key Implementation Challenges
+## UBI Token Distribution
 
-**Human Verification Challenge**: Traditional CAPTCHAs become ineffective due to AI automation capabilities, requiring alternative verification methods.
+### Distribution Formula
+The UBI system implements a 50/50 allocation model designed to balance computational contributions with human accessibility:
 
-**Proposed Solutions**: Implementation of cryptographic identity verification through trusted institutions or government-issued keys, providing secure human verification without computational overhead.
+**Fifty Percent to Compute Providers**: Distributed proportionally among all nodes that contributed computational resources to network operations, weighted by the value and efficiency of their contributions.
 
-**Privacy Protection**: Human users can link government-issued keys to wallets without revealing all wallet addresses, maintaining financial privacy while enabling UBI distribution.
+**Fifty Percent to Verified Humans**: Split equally among all verified human participants who demonstrated any level of network engagement, regardless of their computational capacity.
 
-## Human Verification and Identity System
+### Participation Requirements
+**Minimal Engagement Threshold**: Humans maintain UBI eligibility through light computational tasks accessible on any device including smartphones, tablets, laptops, smart watches, or IoT devices.
 
-### Consent-Based Governance
-The system implements a consent mechanism similar to Ethereum governance, enabling network consensus on trusted identity providers per country and jurisdiction.
+**Battery-Friendly Operations**: All human participation tasks are designed to consume minimal power and computational resources, ensuring accessibility across economic conditions and device capabilities.
 
-### Primary Verification Approach
-Utilization of public-private key pairs issued by trusted government or municipal services, creating a decentralized yet secure human verification system.
+## TON Blockchain Technical Implementation
 
-### Technical Implementation
-The system maintains trusted domain names per country through client updates, allowing agents to query signed messages from government entities. Clients verify authenticity using held public keys, enabling central authorities to issue private keys attachable to user wallets.
+### Smart Contract Architecture
+The UBI distribution system operates through TON smart contracts that automate monthly payments and human verification processes:
 
-### Privacy Preservation
-Users maintain privacy by avoiding single key attachment to multiple wallets, with the option to associate verification keys with only one wallet address.
+**UBI Distribution Contract**: Manages monthly token allocation, tracks participant eligibility, and executes automatic payments based on verification status and contribution metrics.
 
-### Alternative Verification Methods
-Collaboration with independent verification services like WorldCoin Orb, Telegram, or similar platforms presents an alternative approach, though with increased Sybil attack risks. This approach may prove more practical initially due to reduced bureaucratic complexity compared to government collaboration.
+**Human Verification Contract**: Integrates with government-issued digital identity systems to verify human participants while preserving privacy through cryptographic proofs.
 
-## Consensus Economics for Task Resolution
+**Compute Contribution Tracker**: Records and validates computational contributions from network participants, calculating proportional reward distributions.
 
-### Task Assignment Process
-When task completion is required, the system implements a competitive resolution mechanism:
+### TON-Specific Advantages
+**Cell-Based Storage**: TON's unique cell architecture enables efficient storage of participant data, verification records, and contribution histories without traditional blockchain bloat.
 
-**Task Publication**: Researchers or requesters stake tokens as task rewards, creating economic incentives for participation.
+**Workchain Scalability**: Different UBI operations can be distributed across specialized workchains, enabling parallel processing of verifications, distributions, and contributions.
 
-**Competitive Completion**: The fastest qualifying node completes the initial task, establishing a baseline for verification.
+**Integrated File Storage**: TON Storage provides decentralized storage for verification documents and participation records without requiring external storage solutions.
 
-**Verification Process**: Additional trusted nodes perform verification based on trust scores and completion speed, ensuring task accuracy.
+## Human Verification System
 
-**Reward Distribution**: Correct task completion results in primary solver receiving majority rewards, with verification participants receiving proportional shares.
+### Government-Issued Digital Identity
+The primary verification method utilizes public-private key pairs issued by trusted government or municipal authorities, creating secure human verification without traditional CAPTCHA limitations.
 
-### Quality Assurance Through Penalties
-Incorrect task completion triggers penalty mechanisms where solver stakes face proportional slashing based on computational resources wasted. Penalty funds contribute to UBI pools or participant redistribution, maintaining system honesty through economic incentives.
+### TON Integration Advantages
+**Telegram Ecosystem**: Leverages existing Telegram user base and government partnerships for streamlined identity verification processes.
+
+**Consensus Governance**: TON's governance model enables network-wide consensus on trusted identity providers per jurisdiction, similar to Ethereum's governance mechanisms.
+
+**Privacy-First Design**: Users can link government-issued verification keys to specific wallet addresses while maintaining privacy across other financial activities.
+
+### Alternative Approaches
+**Independent Verification Services**: Integration with WorldCoin, Telegram verification, or similar platforms provides alternative pathways, though with increased risk of Sybil attacks and duplicate identities.
+
+## UBI Funding Mechanism
+
+### Token Economics
+The UBI system operates through network transaction fees and computational task revenues that fund monthly distributions:
+
+**Network Transaction Tax**: Small percentage of all TON network transactions contributes to the UBI pool, creating sustainable funding through network growth.
+
+**Computational Task Revenue**: Fees from AI inference, training, and other computational tasks provide additional funding sources for UBI distribution.
+
+### Sustainability Model
+**Self-Sustaining Economy**: As network usage grows, transaction volume increases UBI pool funding, enabling larger monthly payments or expanded participant base.
+
+**Global Economic Impact**: Regular UBI payments create economic stimulus effects, particularly in developing countries where payments represent significant purchasing power.
 
 ## Virtual Machine and Agent Execution
 
