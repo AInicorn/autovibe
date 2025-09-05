@@ -34,7 +34,7 @@ The **Hub** itself is an Intelligent Machine running in a VM with:
 - **Docker Compose stack**: Python orchestrator + PostgreSQL + services
 - **Regular checkpointing**: Daily snapshots via Proxmox/ZFS
 - **Self-evolution**: Can checkpoint and evolve itself
-- **Multi-Hub spawning**: Can create other Hub instances for different environments
+- **Multi-Hub spawning**: Can create other Hub instances for different environments, experimental testing, client isolation, and performance optimization
 
 ### Hub Responsibilities
 - Budget management and resource allocation
