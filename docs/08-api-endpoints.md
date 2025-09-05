@@ -5,488 +5,90 @@
 The Hub exposes a comprehensive REST API for managing Intelligent Machines, projects, checkpoints, and resources. All endpoints use UUID-based identification and support real-time resource tracking.
 
 ### Base URL
-```
-https://hub.autovibe.local/api/v1
-```
+The API base URL is https://hub.autovibe.local/api/v1 for all endpoint requests.
 
 ### Authentication
-All API requests require authentication:
-```bash
-curl -H "Authorization: Bearer ${AUTOVIBE_API_KEY}" \
-     -H "Content-Type: application/json" \
-     https://hub.autovibe.local/api/v1/machines
-```
+All API requests require authentication using Bearer token authorization headers with the AUTOVIBE_API_KEY and Content-Type set to application/json when sending requests to any endpoint.
 
 ## Machine Management Endpoints
 
 ### Spawn Intelligent Machine
-```http
-POST /machines
-{
-  "type": "claude_code",
-  "project_uuid": "550e8400-e29b-41d4-a716-446655440000",
-  "checkpoint_uuid": "checkpoint-abc123-def456",
-  "prompt": "Add user authentication system",
-  "file_modifications": {
-    "config/auth.json": "new OAuth configuration content",
-    "src/auth.py": "updated authentication module"
-  },
-  "resource_constraints": {
-    "max_money": 25.0,
-    "max_time_minutes": 120,
-    "max_api_calls": 50
-  }
-}
-
-Response:
-{
-  "machine_uuid": "machine-789xyz-012abc",
-  "vm_id": "vm-001",
-  "status": "spawning",
-  "estimated_resources": {
-    "money": 20.0,
-    "time_minutes": 90,
-    "api_calls": 35
-  },
-  "spawned_at": "2024-08-24T10:30:00Z"
-}
-```
+The POST /machines endpoint creates new Intelligent Machines with a request body containing machine type (claude_code), project UUID, checkpoint UUID, prompt text, file modifications as key-value pairs, and resource constraints including maximum money, time in minutes, and API calls. The response includes the assigned machine UUID, VM ID, spawning status, estimated resource usage breakdown, and spawning timestamp.
 
 ### Get Machine Status
-```http
-GET /machines/{machine_uuid}
-
-Response:
-{
-  "uuid": "machine-789xyz-012abc",
-  "type": "claude_code", 
-  "status": "working",
-  "project_uuid": "550e8400-e29b-41d4-a716-446655440000",
-  "vm_id": "vm-001",
-  "prompt": "Add user authentication system",
-  "resource_usage": {
-    "money": {"estimated": 25.0, "actual": 18.75, "unit": "CAD"},
-    "time": {"estimated": 120, "actual": 95, "unit": "minutes"},
-    "api_calls": {"estimated": 50, "actual": 32, "unit": "calls"},
-    "compute": {"cpu_hours": 1.2, "memory_gb_hours": 2.8}
-  },
-  "progress": "Analyzing existing authentication patterns...",
-  "last_checkpoint": "checkpoint-def456-789abc",
-  "checkpoints_created": 3,
-  "spawned_at": "2024-08-24T10:30:00Z",
-  "updated_at": "2024-08-24T11:15:00Z"
-}
-```
+The GET /machines/{machine_uuid} endpoint retrieves current machine status including UUID, type, status, project UUID, VM ID, and original prompt. The response provides detailed resource usage with estimated and actual values for money, time, API calls, and compute resources. Additional information includes current progress description, last checkpoint reference, total checkpoints created, spawning timestamp, and last update timestamp.
 
 ### List Machines
-```http
-GET /machines?status=working&project_uuid={project_uuid}&limit=20
-
-Response:
-{
-  "machines": [...],
-  "total_count": 45,
-  "has_more": true,
-  "next_offset": 20
-}
-```
+The GET /machines endpoint supports filtering by status and project_uuid with pagination via limit parameter. The response contains an array of machine objects, total count of all matching machines, a has_more boolean indicating additional results, and next_offset for pagination continuation.
 
 ### Terminate Machine
-```http
-POST /machines/{machine_uuid}/terminate
-{
-  "reason": "user_requested",
-  "create_checkpoint": true
-}
-
-Response:
-{
-  "status": "terminated",
-  "final_checkpoint": "checkpoint-final-xyz789",
-  "resource_usage": {...},
-  "terminated_at": "2024-08-24T11:45:00Z"
-}
-```
+The POST /machines/{machine_uuid}/terminate endpoint accepts a request body with termination reason and optional checkpoint creation flag. The response confirms termination status, provides the final checkpoint UUID if created, includes complete resource usage summary, and records the termination timestamp.
 
 ### Request Manual Checkpoint
-```http
-POST /machines/{machine_uuid}/checkpoint
-{
-  "context": "before_major_refactor",
-  "description": "Safe checkpoint before restructuring authentication"
-}
-
-Response:
-{
-  "checkpoint_uuid": "checkpoint-manual-abc123",
-  "created_at": "2024-08-24T11:20:00Z",
-  "size_mb": 245
-}
-```
+The POST /machines/{machine_uuid}/checkpoint endpoint creates manual checkpoints with a request body containing context identifier and description text. The response provides the new checkpoint UUID, creation timestamp, and checkpoint size in megabytes.
 
 ## Project Management Endpoints
 
 ### Create Project
-```http
-POST /projects
-{
-  "name": "autovibe-core",
-  "greediness": 0.42,
-  "description": "Core autovibe system development",
-  "resource_budgets": {
-    "daily_money": 3.0,
-    "daily_time_hours": 8,
-    "daily_api_calls": 500,
-    "storage_gb": 100
-  }
-}
-
-Response:
-{
-  "uuid": "550e8400-e29b-41d4-a716-446655440000",
-  "name": "autovibe-core",
-  "greediness": 0.42,
-  "initial_checkpoint": "checkpoint-genesis-000000",
-  "created_at": "2024-08-24T10:00:00Z"
-}
-```
+The POST /projects endpoint creates new projects with a request body containing project name, greediness factor (0-1), description, and resource budgets specifying daily money, time hours, API calls, and storage limits. The response includes the assigned project UUID, confirmed name and greediness, initial checkpoint reference, and creation timestamp.
 
 ### Get Project Details
-```http
-GET /projects/{project_uuid}
-
-Response:
-{
-  "uuid": "550e8400-e29b-41d4-a716-446655440000",
-  "name": "autovibe-core",
-  "greediness": 0.42,
-  "current_checkpoint": "checkpoint-latest-abc123",
-  "resource_usage_today": {
-    "money": {"allocated": 3.0, "used": 1.85, "remaining": 1.15},
-    "time": {"allocated": 8, "used": 3.2, "remaining": 4.8},
-    "api_calls": {"allocated": 500, "used": 142, "remaining": 358}
-  },
-  "active_machines": 2,
-  "total_checkpoints": 127,
-  "created_at": "2024-08-24T10:00:00Z",
-  "updated_at": "2024-08-24T11:30:00Z"
-}
-```
+The GET /projects/{project_uuid} endpoint retrieves comprehensive project information including UUID, name, greediness factor, current checkpoint reference, and today's resource usage with allocated, used, and remaining amounts for money, time, and API calls. Additional details include active machine count, total checkpoint count, creation timestamp, and last update timestamp.
 
 ### Update Project
-```http
-PUT /projects/{project_uuid}
-{
-  "greediness": 0.5,
-  "description": "Updated project scope"
-}
-```
+The PUT /projects/{project_uuid} endpoint updates existing projects with a request body containing modified fields such as greediness factor and description text.
 
 ### List Projects
-```http
-GET /projects?active=true&sort=greediness_desc
-
-Response:
-{
-  "projects": [
-    {
-      "uuid": "550e8400-e29b-41d4-a716-446655440000",
-      "name": "autovibe-core", 
-      "greediness": 0.42,
-      "status": "active",
-      "daily_resource_usage": {...}
-    }
-  ],
-  "total_count": 8
-}
-```
+The GET /projects endpoint supports filtering by active status and sorting by greediness in descending order. The response contains an array of project objects with basic information including UUID, name, greediness, status, and daily resource usage summary, plus total count of matching projects.
 
 ## Checkpoint Management Endpoints
 
 ### List Project Checkpoints
-```http
-GET /projects/{project_uuid}/checkpoints?limit=50&type=manual
+The GET /projects/{project_uuid}/checkpoints endpoint supports pagination via limit parameter and filtering by checkpoint type. The response contains an array of checkpoint objects with UUID, creation timestamp, creating machine reference, type, size in megabytes, description, and file count, plus total count and has_more indicator for pagination.
 
-Response:
-{
-  "checkpoints": [
-    {
-      "uuid": "checkpoint-abc123-def456",
-      "created_at": "2024-08-24T11:15:00Z",
-      "created_by_machine": "machine-789xyz-012abc",
-      "type": "automatic",
-      "size_mb": 340,
-      "description": "After implementing OAuth integration",
-      "file_count": 127
-    }
-  ],
-  "total_count": 89,
-  "has_more": true
-}
-```
-
-### Get Checkpoint Details  
-```http
-GET /checkpoints/{checkpoint_uuid}
-
-Response:
-{
-  "uuid": "checkpoint-abc123-def456",
-  "project_uuid": "550e8400-e29b-41d4-a716-446655440000",
-  "parent_checkpoint": "checkpoint-parent-xyz789",
-  "created_by_machine": "machine-789xyz-012abc",
-  "proxmox_snapshot_id": "snap-vm001-abc123",
-  "file_manifest": {
-    "src/auth.py": {"size": 2048, "sha256": "abc123..."},
-    "config/oauth.json": {"size": 512, "sha256": "def456..."}
-  },
-  "created_at": "2024-08-24T11:15:00Z",
-  "size_bytes": 356515840,
-  "metadata": {
-    "trigger": "api_response",
-    "machine_context": "implementing oauth flow"
-  }
-}
-```
+### Get Checkpoint Details
+The GET /checkpoints/{checkpoint_uuid} endpoint returns detailed checkpoint information including UUID, project UUID, parent checkpoint reference, creating machine UUID, and Proxmox snapshot ID. The response includes a file manifest with size and SHA256 hash for each file, creation timestamp, total size in bytes, and metadata containing trigger reason and machine context.
 
 ### Spawn from Checkpoint
-```http
-POST /checkpoints/{checkpoint_uuid}/spawn
-{
-  "machine_type": "claude_code",
-  "prompt": "Continue authentication implementation with testing",
-  "file_modifications": {}
-}
-
-Response:
-{
-  "machine_uuid": "machine-new-456def",
-  "spawned_at": "2024-08-24T12:00:00Z",
-  "parent_checkpoint": "checkpoint-abc123-def456"
-}
-```
+The POST /checkpoints/{checkpoint_uuid}/spawn endpoint creates new machines from existing checkpoints with a request body containing machine type, prompt text, and optional file modifications. The response provides the new machine UUID, spawning timestamp, and parent checkpoint reference.
 
 ### Compare Checkpoints
-```http
-GET /checkpoints/{checkpoint1_uuid}/diff/{checkpoint2_uuid}
-
-Response:
-{
-  "files_added": ["tests/test_auth.py", "docs/auth.md"],
-  "files_modified": ["src/auth.py", "config/settings.json"],
-  "files_deleted": ["old_auth.py"],
-  "total_changes": 147,
-  "summary": "Added comprehensive testing and documentation for authentication system"
-}
-```
+The GET /checkpoints/{checkpoint1_uuid}/diff/{checkpoint2_uuid} endpoint compares two checkpoints and returns arrays of added, modified, and deleted files. The response includes total change count and a human-readable summary of the differences between checkpoints.
 
 ## Resource Management Endpoints
 
 ### Get Resource Overview
-```http
-GET /resources/overview
-
-Response:
-{
-  "system_totals": {
-    "daily_money_budget": 3.0,
-    "daily_money_used": 1.85,
-    "active_machines": 5,
-    "total_projects": 8
-  },
-  "resource_utilization": {
-    "money": 61.7,      // Percentage used
-    "time": 45.2,
-    "api_calls": 28.4,
-    "compute": 67.3
-  },
-  "top_resource_consumers": [
-    {
-      "project_uuid": "550e8400-e29b-41d4-a716-446655440000",
-      "project_name": "autovibe-core",
-      "daily_money_used": 0.95
-    }
-  ]
-}
-```
+The GET /resources/overview endpoint provides system-wide resource statistics including daily money budget and usage, active machine count, and total project count. Resource utilization percentages are provided for money, time, API calls, and compute resources. The response includes top resource consumers with project details and usage amounts.
 
 ### Get Project Resource Usage
-```http
-GET /resources/projects/{project_uuid}?period=last_7_days
-
-Response:
-{
-  "period": "last_7_days",
-  "total_usage": {
-    "money": 12.75,
-    "time_hours": 25.3,
-    "api_calls": 1247,
-    "compute_hours": 18.7
-  },
-  "daily_breakdown": [
-    {
-      "date": "2024-08-24",
-      "money": 1.85,
-      "time_hours": 3.2,
-      "api_calls": 142,
-      "machines_active": 2
-    }
-  ],
-  "efficiency_metrics": {
-    "cost_per_checkpoint": 0.34,
-    "api_calls_per_operation": 8.7,
-    "average_machine_runtime": 45.2
-  }
-}
-```
+The GET /resources/projects/{project_uuid} endpoint supports period filtering (last_7_days) and returns total usage for money, time hours, API calls, and compute hours. The response includes daily breakdown with date-specific usage and active machine counts, plus efficiency metrics including cost per checkpoint, API calls per operation, and average machine runtime.
 
 ### Update Project Resource Budget
-```http
-PUT /resources/projects/{project_uuid}/budget
-{
-  "daily_money": 4.0,
-  "daily_api_calls": 600,
-  "max_concurrent_machines": 3
-}
-```
+The PUT /resources/projects/{project_uuid}/budget endpoint updates project resource limits with a request body containing daily money allocation, daily API calls limit, and maximum concurrent machine count.
 
 ## Hub Management Endpoints
 
 ### Get Hub Status
-```http
-GET /hub/status
-
-Response:
-{
-  "hub_uuid": "hub-primary-001",
-  "status": "healthy",
-  "uptime_hours": 72.3,
-  "version": "1.0.0",
-  "last_checkpoint": "hub-checkpoint-daily-20240824",
-  "active_machines": 5,
-  "active_projects": 8,
-  "resource_utilization": {
-    "cpu_percent": 45.2,
-    "memory_percent": 67.8,
-    "disk_percent": 23.1
-  },
-  "api_stats": {
-    "requests_per_hour": 247,
-    "average_response_time_ms": 85,
-    "error_rate_percent": 0.3
-  }
-}
-```
+The GET /hub/status endpoint returns comprehensive Hub health information including Hub UUID, status, uptime hours, version, and last checkpoint reference. The response provides active machine and project counts, resource utilization percentages for CPU, memory, and disk, plus API statistics including requests per hour, average response time in milliseconds, and error rate percentage.
 
 ### Create Hub Checkpoint
-```http
-POST /hub/checkpoint
-{
-  "type": "manual",
-  "reason": "before_experimental_feature",
-  "description": "Safe checkpoint before enabling multi-hub evolution"
-}
-
-Response:
-{
-  "checkpoint_uuid": "hub-checkpoint-manual-abc123", 
-  "created_at": "2024-08-24T12:00:00Z",
-  "estimated_completion": "2024-08-24T12:05:00Z"
-}
-```
+The POST /hub/checkpoint endpoint creates Hub checkpoints with a request body containing checkpoint type, reason, and description. The response provides the new checkpoint UUID, creation timestamp, and estimated completion time.
 
 ### Spawn Experimental Hub
-```http
-POST /hub/spawn-experimental
-{
-  "base_checkpoint": "hub-checkpoint-daily-20240810",
-  "experiment_name": "optimized_machine_selection",
-  "configuration_changes": {
-    "machine_selection_algorithm": "ml_based",
-    "checkpoint_frequency": "adaptive",
-    "resource_optimization": "aggressive"
-  },
-  "experiment_duration_days": 14
-}
-
-Response:
-{
-  "experimental_hub_uuid": "hub-experiment-001",
-  "experiment_id": "exp-machine-selection-001",
-  "estimated_spawn_time": "2024-08-24T12:10:00Z"
-}
-```
+The POST /hub/spawn-experimental endpoint creates experimental Hub instances with a request body specifying base checkpoint, experiment name, configuration changes including algorithm and optimization settings, and experiment duration in days. The response provides experimental Hub UUID, experiment ID, and estimated spawn time.
 
 ## Monitoring and Analytics Endpoints
 
 ### System Health
-```http
-GET /health
-
-Response:
-{
-  "status": "healthy",
-  "services": {
-    "hub": "healthy",
-    "database": "healthy", 
-    "proxmox": "healthy",
-    "api": "healthy"
-  },
-  "active_machines": 5,
-  "resource_utilization": 67.3,
-  "last_checkpoint": "2024-08-24T00:00:00Z"
-}
-```
+The GET /health endpoint returns overall system health status and individual service status for hub, database, proxmox, and api components. The response includes active machine count, overall resource utilization percentage, and timestamp of the last checkpoint.
 
 ### Analytics and Metrics
-```http
-GET /analytics/efficiency?period=last_30_days
-
-Response:
-{
-  "period": "last_30_days",
-  "overall_efficiency": {
-    "successful_operations": 245,
-    "total_operations": 267,
-    "success_rate": 91.8,
-    "average_cost_per_success": 2.45
-  },
-  "machine_performance": {
-    "claude_code": {
-      "success_rate": 94.2,
-      "average_cost": 18.75,
-      "average_time_minutes": 42.3
-    }
-  },
-  "resource_trends": [
-    {
-      "date": "2024-08-24",
-      "efficiency_score": 87.3,
-      "cost_per_operation": 2.34
-    }
-  ]
-}
-```
+The GET /analytics/efficiency endpoint supports period filtering (last_30_days) and returns overall efficiency metrics including successful operations, total operations, success rate, and average cost per success. Machine performance is broken down by type with success rates, average costs, and timing. Resource trends provide daily efficiency scores and cost per operation over time.
 
 ## Error Responses
 
 ### Standard Error Format
-```json
-{
-  "success": false,
-  "error": {
-    "code": "RESOURCE_LIMIT_EXCEEDED",
-    "message": "Insufficient budget to spawn new machine",
-    "details": {
-      "required_money": 25.0,
-      "available_money": 12.50,
-      "project_uuid": "550e8400-e29b-41d4-a716-446655440000"
-    },
-    "request_id": "550e8400-e29b-41d4-a716-446655440000",
-    "timestamp": "2024-08-24T11:30:00Z"
-  }
-}
-```
+All API errors use a consistent JSON format with success boolean set to false, error object containing code, message, details with context-specific information, unique request ID for tracking, and timestamp of the error occurrence.
 
 ### HTTP Status Codes
 - **200**: Success

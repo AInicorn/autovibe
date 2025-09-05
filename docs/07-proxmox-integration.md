@@ -48,104 +48,11 @@ Snapshot cleanup applies retention policies by iterating through all autovibe VM
 VM resource monitoring retrieves real-time usage statistics via Proxmox API including CPU usage percentage, memory consumption, disk I/O statistics, network traffic, uptime, and VM status. Resource limit monitoring compares current usage against configured limits (default 90% for CPU and memory, 24 hours for maximum runtime) and returns a list of violations including CPU exceeded, memory exceeded, or maximum runtime exceeded.
 
 ### Resource Quota Enforcement
-```python
-def enforce_vm_resource_quotas(project_uuid):
-    """Enforce project-level resource quotas"""
-    
-    project_vms = get_project_vms(project_uuid)
-    project_budget = get_project_resource_budget(project_uuid)
-    
-    total_usage = {
-        'cpu_hours': 0,
-        'memory_gb_hours': 0,
-        'storage_gb': 0,
-        'network_gb': 0
-    }
-    
-    # Calculate total project resource usage
-    for vm_id in project_vms:
-        vm_usage = get_vm_resource_usage(vm_id)
-        uptime_hours = vm_usage['uptime_seconds'] / 3600
-        
-        total_usage['cpu_hours'] += (vm_usage['cpu_usage_percent'] / 100) * uptime_hours
-        total_usage['memory_gb_hours'] += (vm_usage['memory_usage_bytes'] / 1e9) * uptime_hours
-        total_usage['network_gb'] += (vm_usage['network_in_bytes'] + vm_usage['network_out_bytes']) / 1e9
-    
-    # Check against quotas
-    for resource_type, used in total_usage.items():
-        quota = project_budget.get(f"{resource_type}_quota", float('inf'))
-        
-        if used > quota:
-            # Take enforcement action
-            handle_quota_violation(project_uuid, resource_type, used, quota)
-
-def handle_quota_violation(project_uuid, resource_type, used, quota):
-    """Handle resource quota violations"""
-    
-    violation_severity = (used - quota) / quota
-    
-    if violation_severity < 0.1:  # 10% over quota
-        # Soft warning
-        log_quota_warning(project_uuid, resource_type, used, quota)
-    
-    elif violation_severity < 0.5:  # 50% over quota
-        # Throttle new VM creation
-        set_project_vm_creation_throttle(project_uuid, True)
-        alert_project_admins(project_uuid, f"Resource quota exceeded: {resource_type}")
-    
-    else:  # Severe violation
-        # Emergency shutdown of least critical VMs
-        emergency_shutdown_non_critical_vms(project_uuid)
-        alert_system_administrators(f"Emergency quota enforcement: {project_uuid}")
-```
+Resource quota enforcement operates at the project level by monitoring cumulative usage across all project VMs. The system calculates total resource consumption including CPU hours, memory gigabyte-hours, storage usage, and network traffic by aggregating data from all VMs associated with a project. Resource calculations include uptime adjustments for CPU and memory usage. The enforcement function compares actual usage against project quotas and triggers appropriate responses based on violation severity. For violations under 10%, the system logs warnings. For 10-50% violations, it throttles new VM creation and alerts project administrators. For severe violations over 50%, it performs emergency shutdown of non-critical VMs and notifies system administrators.
 
 ## Network Security and Isolation
 
 ### Network Configuration
-```python
-# Network profiles for different machine types
-NETWORK_PROFILES = {
-    'api_access': {
-        'bridge': 'vmbr1',  # Isolated bridge for API-only access
-        'firewall': True,
-        'allowed_destinations': [
-            'api.anthropic.com:443',
-            'api.openai.com:443',
-            'api.github.com:443',
-            'hub.autovibe.local:8000'  # Hub API access
-        ],
-        'blocked_destinations': ['0.0.0.0/0']  # Block all other destinations
-    },
-    
-    'management_access': {
-        'bridge': 'vmbr0',  # Main management bridge
-        'firewall': True,
-        'allowed_destinations': [
-            'proxmox.local:8006',    # Proxmox management
-            'postgres.local:5432',   # Database access
-            'api.anthropic.com:443', # API access for Hub
-            '10.0.0.0/8'            # Internal network
-        ]
-    }
-}
-
-def configure_vm_network(vm_id, network_profile):
-    """Configure VM network based on security profile"""
-    
-    profile = NETWORK_PROFILES[network_profile]
-    
-    # Configure network interface
-    net_config = f"virtio,bridge={profile['bridge']}"
-    if profile['firewall']:
-        net_config += ",firewall=1"
-    
-    proxmox_api.put(
-        f"/nodes/{get_vm_node(vm_id)}/qemu/{vm_id}/config",
-        data={'net0': net_config}
-    )
-    
-    # Apply firewall rules
-    apply_firewall_rules(vm_id, profile)
-```
+Network security uses profile-based configuration for different machine types. The API access profile provides isolated access through a dedicated bridge with firewall enabled, allowing connections only to specific API endpoints (Anthropic, OpenAI, GitHub) and the Hub API while blocking all other destinations. The management access profile uses the main management bridge with firewall protection, permitting access to Proxmox management, database connections, API access for the Hub, and internal network ranges. VM network configuration applies the appropriate profile settings including bridge assignment, firewall activation, and security rule implementation. The system configures the VM's network interface with virtio driver and applies firewall rules based on the selected profile's allowed and blocked destinations.
 
 This Proxmox integration provides the foundation for secure, scalable VM orchestration with comprehensive snapshot management and resource control.
