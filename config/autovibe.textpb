@@ -1,0 +1,22 @@
+# Base Configuration for Autovibe Services
+# This file contains environment-neutral defaults
+
+logging {
+  level: "info"
+}
+
+service {
+  name: "example-service"
+  version: "0.1.0"
+  port: 8080
+  host: "0.0.0.0"
+}
+
+database {
+  driver: "postgres"
+  host: "localhost"
+  port: 5432
+  name: "autovibe"
+  user: "autovibe"
+  ssl_mode: "disable"
+}

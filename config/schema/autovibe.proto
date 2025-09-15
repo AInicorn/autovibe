@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package autovibe.config;
+
+option go_package = "github.com/AInicorn/autovibe/config/configpb";
+
+// Main configuration message for Autovibe services
+message Config {
+  LoggingConfig logging = 1;
+  ServiceConfig service = 2;
+  DatabaseConfig database = 3;
+}
+
+// Logging configuration
+message LoggingConfig {
+  // Log level: debug, info, warn, error
+  string level = 1;
+}
+
+// Service configuration
+message ServiceConfig {
+  // Service name
+  string name = 1;
+
+  // Service version
+  string version = 2;
+
+  // Port to listen on
+  int32 port = 3;
+
+  // Host to bind to
+  string host = 4;
+
+  // Environment: dev, prod, test
+  string environment = 5;
+}
+
+// Database connection configuration
+message DatabaseConfig {
+  // Database driver (postgres, mysql, etc.)
+  string driver = 1;
+
+  // Database host
+  string host = 2;
+
+  // Database port
+  int32 port = 3;
+
+  // Database name
+  string name = 4;
+
+  // Database user
+  string user = 5;
+
+  // SSL mode: disable, require, verify-ca, verify-full
+  string ssl_mode = 6;
+}

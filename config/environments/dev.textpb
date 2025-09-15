@@ -1,0 +1,10 @@
+# Development Environment Configuration
+# Only contains fields that differ from base config
+
+logging {
+  level: "debug"  # Override: more verbose than base "info"
+}
+
+service {
+  environment: "dev"   # Explicit environment setting
+}

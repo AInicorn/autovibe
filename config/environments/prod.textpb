@@ -1,0 +1,15 @@
+# Production Environment Configuration
+# Only contains fields that differ from base config
+
+logging {
+  level: "warn"   # Override: less verbose than base "info"
+}
+
+service {
+  environment: "prod"  # Production environment setting
+}
+
+database {
+  host: "postgres"      # Override: Docker service name vs base "localhost"
+  ssl_mode: "require"   # Override: SSL required vs base "disable"
+}

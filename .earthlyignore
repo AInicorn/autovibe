@@ -1,0 +1,63 @@
+# Earthly ignore file - excludes files from build context
+
+# Git files
+.git/
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs and temporary files
+*.log
+logs/
+tmp/
+temp/
+
+# Build artifacts (will be built in container)
+bin/
+dist/
+target/
+build/
+
+# Dependency directories (will be downloaded in container)
+node_modules/
+vendor/
+
+# Environment files
+.env
+.env.*
+
+# Cache directories
+.cache/
+*.out
+coverage.html
+
+# Docker files (not needed in Earthly builds)
+.dockerignore
+
+# Service-specific ignores
+database-service/bin/
+database-service/ent/generate.go
+database-service/*.out
+
+# Future services
+hub-service/__pycache__/
+hub-service/.pytest_cache/
+hub-service/dist/
